@@ -276,7 +276,8 @@ source .venv/bin/activate
 Install CPU-only torch **first** — otherwise pip pulls the CUDA version (~2.5 GB):
 
 ```bash
-pip install torch==2.3.0+cpu torchvision==0.18.0+cpu --extra-index-url https://download.pytorch.org/whl/cpu
+pip install torch==2.3.0+cpu torchvision==0.18.0+cpu \
+    --extra-index-url https://download.pytorch.org/whl/cpu
 
 pip install -r requirements.txt
 ```
@@ -325,3 +326,29 @@ docker compose up -d --build
 ```
 
 > Local `./data/` folder is shared between local and Docker runs — no data loss when switching.
+
+---
+
+## Make Commands
+
+All common tasks are available via `make`. Requires `make` to be installed.
+
+```bash
+# Development
+make dev          # run locally with hot reload
+make run          # run locally without hot reload
+
+# Code Quality
+make format       # format code with ruff
+make lint         # check lint issues
+make lint-fix     # auto fix lint issues
+make check        # format + lint before committing
+
+# Docker
+make docker-up    # start docker
+make docker-build # build and start docker
+make docker-down  # stop docker
+make docker-logs  # tail container logs
+```
+
+> Run `make check` before every commit to catch formatting and lint issues early.

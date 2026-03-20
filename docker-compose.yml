@@ -10,10 +10,11 @@ services:
       - CHROMA_PERSIST_DIR=/app/chromadb
       - EMBEDDING_MODEL=BAAI/bge-small-en-v1.5
       - DEFAULT_COLLECTION=default
-      - SENTENCE_TRANSFORMERS_HOME=/app/models # cache model to volume
+      - SENTENCE_TRANSFORMERS_HOME=/app/models
+      - EMBEDDING_DEVICE=auto # auto-detects GPU if available, falls back to CPU
     volumes:
-      - chroma-data:/app/chromadb # vector data persists across restarts
-      - model-cache:/app/models # model downloaded once, cached forever
+      - chroma-data:/app/chromadb # vector data
+      - model-cache:/app/models # model cache
 
 volumes:
   chroma-data:

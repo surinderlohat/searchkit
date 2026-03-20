@@ -13,6 +13,7 @@ from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunct
 MODEL_NAME = os.getenv("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5")
 CHROMA_PERSIST_DIR = os.getenv("CHROMA_PERSIST_DIR", "/app/chromadb")
 DEFAULT_COLLECTION = os.getenv("DEFAULT_COLLECTION", "default")
+EMBEDDING_DEVICE = os.getenv("EMBEDDING_DEVICE", "auto")  # cpu / cuda / auto
 
 _CLIENT: chromadb.PersistentClient | None = None
 _EMBEDDING_FN: SentenceTransformerEmbeddingFunction | None = None
@@ -47,7 +48,13 @@ def get_client() -> chromadb.PersistentClient:
 def get_embedding_fn() -> SentenceTransformerEmbeddingFunction:
     global _EMBEDDING_FN
     if _EMBEDDING_FN is None:
-        _EMBEDDING_FN = SentenceTransformerEmbeddingFunction(model_name=MODEL_NAME)
+        print(
+            f"Loading embedding model '{MODEL_NAME}' on device '{EMBEDDING_DEVICE}'..."
+        )
+        _EMBEDDING_FN = SentenceTransformerEmbeddingFunction(
+            model_name=MODEL_NAME,
+            device=EMBEDDING_DEVICE,
+        )
     return _EMBEDDING_FN
 
 

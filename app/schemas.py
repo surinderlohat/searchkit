@@ -1,3 +1,5 @@
+# Copyright (c) 2025 Surinder Singh (https://github.com/surinderlohat)
+# Licensed under the MIT License. See LICENSE file in the project root.
 from __future__ import annotations
 
 from typing import Any
@@ -78,9 +80,16 @@ class DeleteRequest(BaseModel):
 
 class DocumentResult(BaseModel):
     id: str
-    text: str
+    text: str  # our API field name
     metadata: dict[str, Any]
     distance: float
+
+    @classmethod
+    def from_chroma(
+        cls, id: str, document: str, metadata: dict, distance: float
+    ) -> "DocumentResult":
+        """Factory method — maps ChromaDB's 'document' field to our 'text' field."""
+        return cls(id=id, text=document, metadata=metadata, distance=distance)
 
 
 # ── Search ─────────────────────────────────────────────────

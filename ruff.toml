@@ -1,0 +1,55 @@
+# Ruff configuration
+# Docs: https://docs.astral.sh/ruff/configuration/
+
+[tool.ruff]
+target-version = "py311"
+line-length    = 100
+indent-width   = 4
+
+# Folders to exclude from linting/formatting
+exclude = [
+    ".venv",
+    "venv",
+    ".git",
+    "__pycache__",
+    "dist",
+    "build",
+    "data",
+]
+
+# ── Linter ─────────────────────────────────────────────────
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes (unused imports, undefined names)
+    "I",   # isort (import sorting)
+    "B",   # flake8-bugbear (common bugs)
+    "C4",  # flake8-comprehensions (cleaner list/dict comprehensions)
+    "UP",  # pyupgrade (modern Python syntax)
+    "N",   # pep8-naming (naming conventions)
+    "SIM", # flake8-simplify (simplify code)
+    "ERA", # eradicate (commented-out code)
+]
+
+ignore = [
+    "E501",  # line too long — handled by formatter
+    "B008",  # do not perform function calls in default args (FastAPI uses this)
+    "N999",  # invalid module name — not relevant for our structure
+]
+
+# Allow unused imports in __init__.py files
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+
+# ── Import sorting ─────────────────────────────────────────
+[tool.ruff.lint.isort]
+known-first-party  = ["app"]   # treat app.* as first-party imports
+split-on-trailing-comma = true
+
+# ── Formatter ──────────────────────────────────────────────
+[tool.ruff.format]
+quote-style            = "double"   # use double quotes
+indent-style           = "space"
+skip-magic-trailing-comma = false
+line-ending            = "auto"

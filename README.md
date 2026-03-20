@@ -246,3 +246,82 @@ Created by **Surinder Singh** — [github.com/surinderlohat](https://github.com/
 
 Licensed under the [MIT License](./LICENSE).
 © 2025 Surinder Singh. All rights reserved.
+
+---
+
+## Running Locally (Without Docker)
+
+Useful for development and testing before building the Docker image.
+
+### Prerequisites
+
+- Python 3.11+
+- pip
+
+### 1. Create Virtual Environment
+
+```bash
+cd chroma-service-final
+python -m venv .venv
+
+# Linux / Mac
+source .venv/bin/activate
+
+# Windows
+.venv\Scripts\activate
+```
+
+### 2. Install Dependencies
+
+Install CPU-only torch **first** — otherwise pip pulls the CUDA version (~2.5 GB):
+
+```bash
+pip install torch==2.3.0+cpu torchvision==0.18.0+cpu --extra-index-url https://download.pytorch.org/whl/cpu
+
+pip install -r requirements.txt
+```
+
+### 3. Create Local Config
+
+```bash
+cat > .env.local << 'ENVEOF'
+CHROMA_PERSIST_DIR=./data/chromadb
+EMBEDDING_MODEL=BAAI/bge-small-en-v1.5
+SENTENCE_TRANSFORMERS_HOME=./data/models
+EMBEDDING_DEVICE=auto
+DEFAULT_COLLECTION=default
+LOG_LEVEL=DEBUG
+LOG_FORMAT=text
+MEMORY_WARN_MB=3500
+MEMORY_LIMIT_MB=4000
+ENVEOF
+```
+
+> `.env.local` is already in `.gitignore` — safe to put local values here.
+
+### 4. Run
+
+```bash
+export $(cat .env.local | xargs) && uvicorn app.main:app --reload --port 9000
+```
+
+`--reload` automatically restarts the server on every code change.
+
+### 5. Test
+
+| URL                          | Description                                   |
+| ---------------------------- | --------------------------------------------- |
+| http://localhost:9000/docs   | Swagger UI — test all endpoints interactively |
+| http://localhost:9000/health | Quick sanity check                            |
+
+### Switching Back to Docker
+
+```bash
+# Deactivate venv
+deactivate
+
+# Build and run with Docker
+docker compose up -d --build
+```
+
+> Local `./data/` folder is shared between local and Docker runs — no data loss when switching.

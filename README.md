@@ -218,7 +218,7 @@ Using the default `BAAI/bge-small-en-v1.5` model (384 dimensions):
 ```yaml
 services:
   searchkit:
-    image: yourname/searchkit:latest
+    image: surinderlohat/searchkit:latest
     container_name: searchkit
     restart: unless-stopped
     ports:

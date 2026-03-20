@@ -43,7 +43,7 @@ docker run -d \
   --name searchkit \
   -p 9000:9000 \
   -v chroma-data:/app/chromadb \
-  yourname/searchkit:latest
+  surinderlohat/searchkit:latest
 ```
 
 Or with Docker Compose:
@@ -51,7 +51,7 @@ Or with Docker Compose:
 ```yaml
 services:
   searchkit:
-    image: yourname/searchkit:latest
+    image: surinderlohat/searchkit:latest
     container_name: searchkit
     restart: unless-stopped
     ports:

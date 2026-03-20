@@ -6,9 +6,17 @@ on:
       - main # builds on every push to main (no push to Docker Hub)
     tags:
       - "v*.*.*" # publishes to Docker Hub only on release tags e.g. v1.0.0
+    paths-ignore:
+      - "**.md" # skip if only markdown files changed
+      - "assets/**" # skip if only assets changed
+      - "LICENSE" # skip if only license changed
   pull_request:
     branches:
       - main # builds on PRs (validates Dockerfile is healthy, no push)
+    paths-ignore:
+      - "**.md" # skip if only markdown files changed
+      - "assets/**" # skip if only assets changed
+      - "LICENSE" # skip if only license changed
 
 env:
   IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/searchkit

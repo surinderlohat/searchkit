@@ -60,11 +60,15 @@ services:
       - CHROMA_PERSIST_DIR=/app/chromadb
       - EMBEDDING_MODEL=BAAI/bge-small-en-v1.5
       - DEFAULT_COLLECTION=default
+      - SENTENCE_TRANSFORMERS_HOME=/app/models
+      - EMBEDDING_DEVICE=auto
+      - LOG_LEVEL=INFO # INFO | DEBUG | WARNING | ERROR
+      - LOG_FORMAT=text # text | json (use json in prod)
+      - MEMORY_WARN_MB=3500 # log warning when RAM exceeds this
+      - MEMORY_LIMIT_MB=4000 # refuse writes above this
     volumes:
-      - chroma-data:/app/chromadb
-
-volumes:
-  chroma-data:
+      - ./data/chromadb:/app/chromadb # vector DB — directly on host disk
+      - ./data/models:/app/models # model cache — directly on host disk
 ```
 
 ---

@@ -227,23 +227,34 @@ services:
       - CHROMA_PERSIST_DIR=/app/chromadb
       - EMBEDDING_MODEL=BAAI/bge-small-en-v1.5
       - DEFAULT_COLLECTION=default
+      - SENTENCE_TRANSFORMERS_HOME=/app/models
+      - EMBEDDING_DEVICE=auto
+      - LOG_LEVEL=INFO # INFO | DEBUG | WARNING | ERROR
+      - LOG_FORMAT=text # text | json (use json in prod)
+      - MEMORY_WARN_MB=3500 # log warning when RAM exceeds this
+      - MEMORY_LIMIT_MB=4000 # refuse writes above this
     volumes:
-      - chroma-data:/app/chromadb
-
-volumes:
-  chroma-data:
+      - ./data/chromadb:/app/chromadb # vector DB — directly on host disk
+      - ./data/models:/app/models # model cache — directly on host disk
 ```
 
 ---
 
 ## How Your Main Service Uses This
 
+> **Inside Docker** use `http://searchkit:9000` — Docker resolves the container name automatically.
+> **From your host machine** (local dev, Postman, curl) use `http://localhost:9000`.
+
 ```python
 import httpx
 
+# Use "searchkit" as host when running inside Docker Compose
+# Use "localhost" when calling from your host machine
+SEARCHKIT_URL = "http://searchkit:9000"
+
 async def insert_document(id: str, text: str, metadata: dict):
     async with httpx.AsyncClient() as client:
-        await client.post("http://searchkit:9000/documents/upsert", json={
+        await client.post(f"{SEARCHKIT_URL}/documents/upsert", json={
             "collection": "default",
             "id": id,
             "text": text,
@@ -252,7 +263,7 @@ async def insert_document(id: str, text: str, metadata: dict):
 
 async def search(query: str) -> list:
     async with httpx.AsyncClient() as client:
-        res = await client.post("http://searchkit:9000/search", json={
+        res = await client.post(f"{SEARCHKIT_URL}/search", json={
             "query": query,
             "top_k": 5,
             "collection": "default",

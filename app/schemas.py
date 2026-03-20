@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -28,16 +29,8 @@ class UpsertRequest(BaseModel):
             "example": {
                 "collection": "default",
                 "documents": [
-                    {
-                        "id": "doc_1",
-                        "text": "Hello world",
-                        "metadata": {"source": "wiki"},
-                    },
-                    {
-                        "id": "doc_2",
-                        "text": "FastAPI is great",
-                        "metadata": {"source": "blog"},
-                    },
+                    {"id": "doc_1", "text": "Hello world", "metadata": {"source": "wiki"}},
+                    {"id": "doc_2", "text": "FastAPI is great", "metadata": {"source": "blog"}},
                 ],
             }
         }
@@ -86,7 +79,11 @@ class DocumentResult(BaseModel):
 
     @classmethod
     def from_chroma(
-        cls, id: str, document: str, metadata: dict, distance: float
+        cls,
+        id: str,
+        document: str,
+        metadata: dict,
+        distance: float,
     ) -> "DocumentResult":
         """Factory method — maps ChromaDB's 'document' field to our 'text' field."""
         return cls(id=id, text=document, metadata=metadata, distance=distance)
@@ -100,7 +97,8 @@ class SearchRequest(BaseModel):
     top_k: int = Field(default=10, ge=1, le=100)
     collection: str = "default"
     where: dict[str, Any] | None = Field(
-        default=None, description='Optional metadata filter e.g. {"source": "wiki"}'
+        default=None,
+        description='Optional metadata filter e.g. {"source": "wiki"}',
     )
 
     model_config = {

@@ -7,9 +7,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.logger import get_logger
-from app.routers import collections, documents, search, health
 from app.db import get_collection
+from app.logger import get_logger
+from app.routers import collections, documents, health, search
 
 logger = get_logger(__name__)
 

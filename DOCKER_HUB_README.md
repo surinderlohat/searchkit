@@ -54,7 +54,6 @@ volumes:
 Full interactive docs at **`http://localhost:9000/docs`**
 
 ### Insert / Update — Single Document
-
 ```bash
 curl -X POST http://localhost:9000/documents/upsert \
   -H "Content-Type: application/json" \
@@ -67,7 +66,6 @@ curl -X POST http://localhost:9000/documents/upsert \
 ```
 
 ### Insert / Update — Bulk Documents
-
 ```bash
 curl -X POST http://localhost:9000/documents/upsert/bulk \
   -H "Content-Type: application/json" \
@@ -81,7 +79,6 @@ curl -X POST http://localhost:9000/documents/upsert/bulk \
 ```
 
 ### Semantic Search
-
 ```bash
 curl -X POST http://localhost:9000/search \
   -H "Content-Type: application/json" \
@@ -94,7 +91,6 @@ curl -X POST http://localhost:9000/search \
 ```
 
 ### Delete Documents
-
 ```bash
 curl -X DELETE http://localhost:9000/documents/delete \
   -H "Content-Type: application/json" \
@@ -102,7 +98,6 @@ curl -X DELETE http://localhost:9000/documents/delete \
 ```
 
 ### Collections
-
 ```
 GET    /collections           # list all
 GET    /collections/{name}    # get one
@@ -113,29 +108,29 @@ DELETE /collections/{name}    # drop one
 
 ## Environment Variables
 
-| Variable             | Default                  | Description                       |
-| -------------------- | ------------------------ | --------------------------------- |
-| `CHROMA_PERSIST_DIR` | `/app/chromadb`          | Path where ChromaDB persists data |
-| `EMBEDDING_MODEL`    | `BAAI/bge-small-en-v1.5` | SentenceTransformer model name    |
-| `DEFAULT_COLLECTION` | `default`                | Default collection name           |
+| Variable             | Default                  | Description                        |
+|----------------------|--------------------------|------------------------------------|
+| `CHROMA_PERSIST_DIR` | `/app/chromadb`          | Path where ChromaDB persists data  |
+| `EMBEDDING_MODEL`    | `BAAI/bge-small-en-v1.5` | SentenceTransformer model name     |
+| `DEFAULT_COLLECTION` | `default`                | Default collection name            |
 
 ---
 
 ## Capacity Guide
 
 | Records | RAM Required |
-| ------- | ------------ |
-| 100K    | ~1 GB        |
-| 500K    | ~4 GB        |
-| 1M      | ~8 GB        |
-| 2M      | ~16 GB       |
+|---------|-------------|
+| 100K    | ~1 GB       |
+| 500K    | ~4 GB       |
+| 1M      | ~8 GB       |
+| 2M      | ~16 GB      |
 
 ---
 
 ## Tags
 
 | Tag      | Description                   |
-| -------- | ----------------------------- |
+|----------|-------------------------------|
 | `latest` | Latest stable build from main |
 | `1.x.x`  | Specific release version      |
 
@@ -153,3 +148,4 @@ Created by **Surinder Singh** — [github.com/surinderlohat](https://github.com/
 
 Licensed under the [MIT License](https://github.com/surinderlohat/chroma-wrapper/blob/main/LICENSE).
 © 2025 Surinder Singh. All rights reserved.
+

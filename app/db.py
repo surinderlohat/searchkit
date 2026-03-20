@@ -18,6 +18,12 @@ MODEL_NAME = os.getenv("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5")
 CHROMA_PERSIST_DIR = os.getenv("CHROMA_PERSIST_DIR", "/app/chromadb")
 DEFAULT_COLLECTION = os.getenv("DEFAULT_COLLECTION", "default")
 
+_CLIENT: chromadb.PersistentClient | None = None
+_EMBEDDING_FN: SentenceTransformerEmbeddingFunction | None = None
+
+# Single async lock — serializes all write operations (upsert / delete)
+_WRITE_LOCK = asyncio.Lock()
+
 
 def _resolve_device() -> str:
     """
@@ -38,16 +44,10 @@ def _resolve_device() -> str:
             resolved = "cpu"
         logger.info(f"EMBEDDING_DEVICE=auto resolved to '{resolved}'")
         return resolved
-    return requested  # cpu / cuda passed explicitly — use as-is
+    return requested
 
 
 EMBEDDING_DEVICE = _resolve_device()
-
-_CLIENT: chromadb.PersistentClient | None = None
-_EMBEDDING_FN: SentenceTransformerEmbeddingFunction | None = None
-
-# Single async lock — serializes all write operations (upsert / delete)
-_WRITE_LOCK = asyncio.Lock()
 
 
 # ── Client / Collection ────────────────────────────────────

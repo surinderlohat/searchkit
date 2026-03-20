@@ -22,7 +22,7 @@ docker compose up -d
 ```
 
 | Service     | URL                        |
-| ----------- | -------------------------- |
+|-------------|----------------------------|
 | Wrapper API | http://localhost:9000      |
 | API Docs    | http://localhost:9000/docs |
 
@@ -31,11 +31,9 @@ docker compose up -d
 ## API Endpoints
 
 ### Health
-
 ```
 GET /health
 ```
-
 ```json
 { "status": "ok", "chromadb": "embedded", "collections": 1 }
 ```
@@ -43,11 +41,9 @@ GET /health
 ---
 
 ### Insert / Update — Single Document
-
 ```
 POST /documents/upsert
 ```
-
 ```json
 {
   "collection": "default",
@@ -56,40 +52,25 @@ POST /documents/upsert
   "metadata": { "source": "wiki", "topic": "ai" }
 }
 ```
-
 ```json
-{
-  "status": "ok",
-  "message": "Upserted document 'doc_1' into 'default'. Total: 1"
-}
+{ "status": "ok", "message": "Upserted document 'doc_1' into 'default'. Total: 1" }
 ```
 
 ---
 
 ### Insert / Update — Bulk Documents
-
 ```
 POST /documents/upsert/bulk
 ```
-
 ```json
 {
   "collection": "default",
   "documents": [
-    {
-      "id": "doc_1",
-      "text": "Machine learning is a subset of AI",
-      "metadata": { "source": "wiki" }
-    },
-    {
-      "id": "doc_2",
-      "text": "FastAPI is a modern Python web framework",
-      "metadata": { "source": "blog" }
-    }
+    { "id": "doc_1", "text": "Machine learning is a subset of AI", "metadata": { "source": "wiki" } },
+    { "id": "doc_2", "text": "FastAPI is a modern Python web framework", "metadata": { "source": "blog" } }
   ]
 }
 ```
-
 ```json
 { "status": "ok", "message": "Upserted 2 documents into 'default'. Total: 2" }
 ```
@@ -99,33 +80,25 @@ POST /documents/upsert/bulk
 ---
 
 ### Delete Documents
-
 ```
 DELETE /documents/delete
 ```
-
 ```json
 {
   "collection": "default",
   "ids": ["doc_1", "doc_2"]
 }
 ```
-
 ```json
-{
-  "status": "ok",
-  "message": "Deleted 2 documents from 'default'. Remaining: 0"
-}
+{ "status": "ok", "message": "Deleted 2 documents from 'default'. Remaining: 0" }
 ```
 
 ---
 
 ### Semantic Search
-
 ```
 POST /search
 ```
-
 ```json
 {
   "query": "what is artificial intelligence?",
@@ -134,7 +107,6 @@ POST /search
   "where": { "source": "wiki" }
 }
 ```
-
 ```json
 {
   "query": "what is artificial intelligence?",
@@ -155,7 +127,6 @@ POST /search
 ---
 
 ### Collections
-
 ```
 GET    /collections           # list all collections with document counts
 GET    /collections/{name}    # get a specific collection
@@ -166,11 +137,11 @@ DELETE /collections/{name}    # drop an entire collection
 
 ## Environment Variables
 
-| Variable             | Default                  | Description                       |
-| -------------------- | ------------------------ | --------------------------------- |
-| `CHROMA_PERSIST_DIR` | `/app/chromadb`          | Path where ChromaDB persists data |
-| `EMBEDDING_MODEL`    | `BAAI/bge-small-en-v1.5` | SentenceTransformer model name    |
-| `DEFAULT_COLLECTION` | `default`                | Default collection name           |
+| Variable             | Default                  | Description                        |
+|----------------------|--------------------------|------------------------------------|
+| `CHROMA_PERSIST_DIR` | `/app/chromadb`          | Path where ChromaDB persists data  |
+| `EMBEDDING_MODEL`    | `BAAI/bge-small-en-v1.5` | SentenceTransformer model name     |
+| `DEFAULT_COLLECTION` | `default`                | Default collection name            |
 
 ---
 
@@ -179,11 +150,11 @@ DELETE /collections/{name}    # drop an entire collection
 Using the default `BAAI/bge-small-en-v1.5` model (384 dimensions):
 
 | Records | RAM Required |
-| ------- | ------------ |
-| 100K    | ~1 GB        |
-| 500K    | ~4 GB        |
-| 1M      | ~8 GB        |
-| 2M      | ~16 GB       |
+|---------|-------------|
+| 100K    | ~1 GB       |
+| 500K    | ~4 GB       |
+| 1M      | ~8 GB       |
+| 2M      | ~16 GB      |
 
 > Recommended for up to **2 million records**. For larger scale, switch to a dedicated ChromaDB or Qdrant server.
 
@@ -247,6 +218,7 @@ Created by **Surinder Singh** — [github.com/surinderlohat](https://github.com/
 Licensed under the [MIT License](./LICENSE).
 © 2025 Surinder Singh. All rights reserved.
 
+
 ---
 
 ## Running Locally (Without Docker)
@@ -254,12 +226,10 @@ Licensed under the [MIT License](./LICENSE).
 Useful for development and testing before building the Docker image.
 
 ### Prerequisites
-
 - Python 3.11+
 - pip
 
 ### 1. Create Virtual Environment
-
 ```bash
 cd chroma-service-final
 python -m venv .venv
@@ -272,9 +242,7 @@ source .venv/bin/activate
 ```
 
 ### 2. Install Dependencies
-
 Install CPU-only torch **first** — otherwise pip pulls the CUDA version (~2.5 GB):
-
 ```bash
 pip install torch==2.3.0+cpu torchvision==0.18.0+cpu \
     --extra-index-url https://download.pytorch.org/whl/cpu
@@ -283,7 +251,6 @@ pip install -r requirements.txt
 ```
 
 ### 3. Create Local Config
-
 ```bash
 cat > .env.local << 'ENVEOF'
 CHROMA_PERSIST_DIR=./data/chromadb
@@ -301,7 +268,6 @@ ENVEOF
 > `.env.local` is already in `.gitignore` — safe to put local values here.
 
 ### 4. Run
-
 ```bash
 export $(cat .env.local | xargs) && uvicorn app.main:app --reload --port 9000
 ```
@@ -309,14 +275,12 @@ export $(cat .env.local | xargs) && uvicorn app.main:app --reload --port 9000
 `--reload` automatically restarts the server on every code change.
 
 ### 5. Test
-
-| URL                          | Description                                   |
-| ---------------------------- | --------------------------------------------- |
-| http://localhost:9000/docs   | Swagger UI — test all endpoints interactively |
-| http://localhost:9000/health | Quick sanity check                            |
+| URL | Description |
+|-----|-------------|
+| http://localhost:9000/docs | Swagger UI — test all endpoints interactively |
+| http://localhost:9000/health | Quick sanity check |
 
 ### Switching Back to Docker
-
 ```bash
 # Deactivate venv
 deactivate

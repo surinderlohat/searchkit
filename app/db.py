@@ -1,3 +1,5 @@
+# Copyright (c) 2025 Surinder Singh (https://github.com/surinderlohat)
+# Licensed under the MIT License. See LICENSE file in the project root.
 from __future__ import annotations
 
 import asyncio
@@ -8,11 +10,11 @@ import chromadb
 from chromadb import Collection
 from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
 
-MODEL_NAME         = os.getenv("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5")
+MODEL_NAME = os.getenv("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5")
 CHROMA_PERSIST_DIR = os.getenv("CHROMA_PERSIST_DIR", "/app/chromadb")
 DEFAULT_COLLECTION = os.getenv("DEFAULT_COLLECTION", "default")
 
-_CLIENT:       chromadb.PersistentClient | None = None
+_CLIENT: chromadb.PersistentClient | None = None
 _EMBEDDING_FN: SentenceTransformerEmbeddingFunction | None = None
 
 # Single async lock — serializes all write operations (upsert / delete)
@@ -22,6 +24,7 @@ _WRITE_LOCK = asyncio.Lock()
 
 
 # ── Client / Collection ────────────────────────────────────
+
 
 def get_client() -> chromadb.PersistentClient:
     """
@@ -35,7 +38,7 @@ def get_client() -> chromadb.PersistentClient:
             path=CHROMA_PERSIST_DIR,
             settings=chromadb.Settings(
                 anonymized_telemetry=False,  # disable telemetry in prod
-                allow_reset=False,           # prevent accidental full wipe
+                allow_reset=False,  # prevent accidental full wipe
             ),
         )
     return _CLIENT
@@ -66,6 +69,7 @@ def delete_collection(name: str) -> None:
 
 
 # ── Safe Write Operations ──────────────────────────────────
+
 
 async def safe_upsert(
     collection: Collection,

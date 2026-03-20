@@ -1,6 +1,11 @@
 from fastapi import APIRouter, HTTPException
 from app.db import get_collection, safe_upsert, safe_delete
-from app.schemas import UpsertRequest, DeleteRequest, StatusResponse
+from app.schemas import (
+    UpsertRequest,
+    SingleUpsertRequest,
+    DeleteRequest,
+    StatusResponse,
+)
 
 router = APIRouter()
 
@@ -8,35 +13,67 @@ BATCH_SIZE = 256
 
 
 @router.post("/upsert", response_model=StatusResponse)
-async def upsert_documents(req: UpsertRequest):
+async def upsert_single(req: SingleUpsertRequest):
     """
-    Add or update documents in a collection.
-    - If an ID already exists, it gets updated.
-    - If it doesn't exist, it gets added.
-    - Embeddings are generated automatically.
-    - Writes are serialized via asyncio lock — safe for concurrent requests.
-    """
-    if len(req.ids) != len(req.documents):
-        raise HTTPException(
-            status_code=422,
-            detail=f"ids and documents length mismatch: {len(req.ids)} vs {len(req.documents)}",
-        )
-    if req.metadatas and len(req.metadatas) != len(req.ids):
-        raise HTTPException(
-            status_code=422,
-            detail=f"metadatas length must match ids: {len(req.metadatas)} vs {len(req.ids)}",
-        )
+    Insert or update a single document.
 
+    - If the ID exists → updates it.
+    - If the ID is new → inserts it.
+    - Embedding is generated automatically from the `text` field.
+
+    Example:
+        {
+            "collection": "default",
+            "id": "doc_1",
+            "text": "Hello world",
+            "metadata": { "source": "wiki" }
+        }
+    """
     try:
         collection = get_collection(req.collection)
-        total = len(req.ids)
+        await safe_upsert(
+            collection,
+            ids=[req.id],
+            documents=[req.text],
+            metadatas=[req.metadata] if req.metadata else None,
+        )
+        return StatusResponse(
+            status="ok",
+            message=f"Upserted document '{req.id}' into '{req.collection}'. Total: {collection.count()}",
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/upsert/bulk", response_model=StatusResponse)
+async def upsert_bulk(req: UpsertRequest):
+    """
+    Insert or update multiple documents in one call.
+
+    - Processes in batches of 256 for memory efficiency.
+    - Each document with an existing ID gets updated, new IDs get inserted.
+    - Embeddings are generated automatically from each `text` field.
+
+    Example:
+        {
+            "collection": "default",
+            "documents": [
+                { "id": "doc_1", "text": "Hello world", "metadata": { "source": "wiki" } },
+                { "id": "doc_2", "text": "FastAPI is great", "metadata": { "source": "blog" } }
+            ]
+        }
+    """
+    try:
+        collection = get_collection(req.collection)
+        total = len(req.documents)
 
         for i in range(0, total, BATCH_SIZE):
+            batch = req.documents[i : i + BATCH_SIZE]
             await safe_upsert(
                 collection,
-                ids=req.ids[i : i + BATCH_SIZE],
-                documents=req.documents[i : i + BATCH_SIZE],
-                metadatas=req.metadatas[i : i + BATCH_SIZE] if req.metadatas else None,
+                ids=[doc.id for doc in batch],
+                documents=[doc.text for doc in batch],
+                metadatas=[doc.metadata for doc in batch],
             )
 
         return StatusResponse(
@@ -51,7 +88,12 @@ async def upsert_documents(req: UpsertRequest):
 async def delete_documents(req: DeleteRequest):
     """
     Delete documents by their IDs.
-    Writes are serialized via asyncio lock — safe for concurrent requests.
+
+    Example:
+        {
+            "collection": "default",
+            "ids": ["doc_1", "doc_2"]
+        }
     """
     try:
         collection = get_collection(req.collection)

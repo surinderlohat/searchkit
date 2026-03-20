@@ -6,19 +6,57 @@ from pydantic import BaseModel, Field
 
 # ── Documents ──────────────────────────────────────────────
 
+
+class DocumentItem(BaseModel):
+    """A single document entry."""
+
+    id: str
+    text: str
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
 class UpsertRequest(BaseModel):
-    ids: list[str]
-    documents: list[str]
-    metadatas: list[dict[str, Any]] | None = None
+    """Bulk upsert — insert or update multiple documents at once."""
+
     collection: str = "default"
+    documents: list[DocumentItem]
 
     model_config = {
         "json_schema_extra": {
             "example": {
-                "ids": ["doc_1", "doc_2"],
-                "documents": ["Hello world", "FastAPI is great"],
-                "metadatas": [{"source": "wiki"}, {"source": "blog"}],
                 "collection": "default",
+                "documents": [
+                    {
+                        "id": "doc_1",
+                        "text": "Hello world",
+                        "metadata": {"source": "wiki"},
+                    },
+                    {
+                        "id": "doc_2",
+                        "text": "FastAPI is great",
+                        "metadata": {"source": "blog"},
+                    },
+                ],
+            }
+        }
+    }
+
+
+class SingleUpsertRequest(BaseModel):
+    """Single document upsert — insert or update one document."""
+
+    collection: str = "default"
+    id: str
+    text: str
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "collection": "default",
+                "id": "doc_1",
+                "text": "Hello world",
+                "metadata": {"source": "wiki"},
             }
         }
     }
@@ -28,23 +66,32 @@ class DeleteRequest(BaseModel):
     ids: list[str]
     collection: str = "default"
 
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "collection": "default",
+                "ids": ["doc_1", "doc_2"],
+            }
+        }
+    }
+
 
 class DocumentResult(BaseModel):
     id: str
-    document: str
+    text: str
     metadata: dict[str, Any]
     distance: float
 
 
 # ── Search ─────────────────────────────────────────────────
 
+
 class SearchRequest(BaseModel):
     query: str
     top_k: int = Field(default=10, ge=1, le=100)
     collection: str = "default"
     where: dict[str, Any] | None = Field(
-        default=None,
-        description="Optional metadata filter e.g. {\"source\": \"wiki\"}"
+        default=None, description='Optional metadata filter e.g. {"source": "wiki"}'
     )
 
     model_config = {
@@ -67,6 +114,7 @@ class SearchResponse(BaseModel):
 
 # ── Collections ────────────────────────────────────────────
 
+
 class CollectionInfo(BaseModel):
     name: str
     count: int
@@ -78,6 +126,7 @@ class CollectionListResponse(BaseModel):
 
 
 # ── Generic ────────────────────────────────────────────────
+
 
 class StatusResponse(BaseModel):
     status: str

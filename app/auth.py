@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 
-from fastapi import Security, HTTPException
+from fastapi import HTTPException, Security
 from fastapi.security import APIKeyHeader
 
 from app.logger import get_logger

@@ -31,8 +31,7 @@ def check_memory_warn() -> float:
     usage_mb = get_memory_mb()
     if usage_mb >= MEMORY_WARN_MB:
         logger.warning(
-            f"High memory usage: {usage_mb:.1f} MB "
-            f"(warn threshold: {MEMORY_WARN_MB} MB)"
+            f"High memory usage: {usage_mb:.1f} MB (warn threshold: {MEMORY_WARN_MB} MB)"
         )
     else:
         logger.debug(f"Memory usage: {usage_mb:.1f} MB")

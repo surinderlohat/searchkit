@@ -161,9 +161,23 @@ DELETE /collections/{name}    # drop one
 
 ---
 
-## License
+## Acknowledgements
 
-MIT
+This project is built on the shoulders of some fantastic open source tools and models. Huge thanks to the teams and communities behind them:
+
+| Tool                                                                       | What it does in this project                                                       |
+| -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| 🤗 [BAAI/bge-small-en-v1.5](https://huggingface.co/BAAI/bge-small-en-v1.5) | The embedding model that powers semantic search — fast, accurate, and CPU-friendly |
+| 🟣 [ChromaDB](https://www.trychroma.com)                                   | The embedded vector store that handles storage, indexing, and similarity search    |
+| ⚡ [FastAPI](https://fastapi.tiangolo.com)                                 | The web framework powering the REST API and auto-generated Swagger docs            |
+| 🐳 [Docker](https://www.docker.com)                                        | Containerisation that makes the whole service portable and production-ready        |
+| 🐙 [GitHub Actions](https://github.com/features/actions)                   | CI/CD pipeline for automated linting, building, and publishing to Docker Hub       |
+| 🤗 [Sentence Transformers](https://www.sbert.net)                          | Python library that makes embedding generation simple and model-agnostic           |
+| 🔥 [PyTorch](https://pytorch.org)                                          | The deep learning backbone that runs the embedding model                           |
+| 🦄 [Uvicorn](https://www.uvicorn.org)                                      | The lightning-fast ASGI server that runs FastAPI in production                     |
+| ✅ [Pydantic](https://docs.pydantic.dev)                                   | Data validation and serialisation for all request and response models              |
+| 🐍 [psutil](https://github.com/giampaolo/psutil)                           | System memory monitoring to keep the service within safe RAM limits                |
+| 🧹 [Ruff](https://docs.astral.sh/ruff)                                     | Blazing-fast Python linter and formatter that keeps the codebase clean             |
 
 ---
 

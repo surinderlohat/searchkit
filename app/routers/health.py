@@ -24,7 +24,9 @@ def health_check():
         elif usage_mb >= MEMORY_WARN_MB:
             status = "warning"
 
-        logger.debug(f"Health check passed. Collections: {len(collections)}, RAM: {usage_mb:.1f} MB")
+        logger.debug(
+            f"Health check passed. Collections: {len(collections)}, RAM: {usage_mb:.1f} MB"
+        )
         return {
             "status": status,
             "chromadb": "embedded",

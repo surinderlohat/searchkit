@@ -45,3 +45,6 @@ docker-compose.override.yml
 coverage/
 .coverage
 htmlcov/
+
+# Host mounted data — never commit to git
+data/

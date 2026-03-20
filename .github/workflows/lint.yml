@@ -19,6 +19,19 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          # Cache pip packages — keyed on requirements.txt hash
+          # No re-download unless requirements.txt changes
+          cache: "pip"
+          cache-dependency-path: requirements.txt
+
+      # Cache ruff itself separately — it rarely changes
+      - name: Cache ruff
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ruff-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ruff-${{ runner.os }}-
 
       - name: Install Ruff
         run: pip install ruff==0.4.9

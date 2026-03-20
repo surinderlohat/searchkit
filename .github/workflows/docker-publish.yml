@@ -5,10 +5,10 @@ on:
     branches:
       - main
     tags:
-      - "v*.*.*"         # triggers on version tags like v1.0.0
+      - "v*.*.*" # triggers on version tags like v1.0.0
   pull_request:
     branches:
-      - main             # builds but does NOT push on PRs (just validates)
+      - main # builds but does NOT push on PRs (just validates)
 
 env:
   IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/chroma-wrapper
@@ -57,17 +57,23 @@ jobs:
             type=semver,pattern={{major}}
 
       # ── 6. Build and push ─────────────────────────────────
+      # cache-from / cache-to uses GitHub Actions cache (type=gha)
+      # Docker layer cache is keyed on file contents:
+      #   - requirements.txt changed → pip layer rebuilds, rest is cached
+      #   - only app/ changed        → only app COPY layer rebuilds
+      #   - nothing changed          → entire build served from cache instantly
       - name: Build and Push
         uses: docker/build-push-action@v6
         with:
           context: .
-          platforms: linux/amd64,linux/arm64   # supports both x86 and Apple Silicon
+          platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha        # use GitHub Actions cache to speed up builds
+          cache-from: type=gha
           cache-to: type=gha,mode=max
 
       # ── 7. Print image digest ─────────────────────────────
       - name: Print image digest
-        run: echo "Published ${{ env.IMAGE_NAME }} → ${{ steps.build-and-push.outputs.digest }}"
+        if: github.event_name != 'pull_request'
+        run: echo "Published ${{ env.IMAGE_NAME }} → ${{ steps.build-push.outputs.digest }}"

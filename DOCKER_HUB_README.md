@@ -1,4 +1,4 @@
-# ChromaDB Wrapper Service
+# SearchKit
 
 > **Plug-in vector search for any stack — one container, zero config, production ready.**
 
@@ -40,19 +40,19 @@ This service acts as a **dedicated semantic search layer** that sits alongside y
 
 ```bash
 docker run -d \
-  --name chroma-wrapper \
+  --name searchkit \
   -p 9000:9000 \
   -v chroma-data:/app/chromadb \
-  yourname/chroma-wrapper:latest
+  yourname/searchkit:latest
 ```
 
 Or with Docker Compose:
 
 ```yaml
 services:
-  chroma-wrapper:
-    image: yourname/chroma-wrapper:latest
-    container_name: chroma-wrapper
+  searchkit:
+    image: yourname/searchkit:latest
+    container_name: searchkit
     restart: unless-stopped
     ports:
       - "9000:9000"
@@ -185,5 +185,5 @@ This project is built on the shoulders of some fantastic open source tools and m
 
 Created by **Surinder Singh** — [github.com/surinderlohat](https://github.com/surinderlohat)
 
-Licensed under the [MIT License](https://github.com/surinderlohat/chroma-wrapper/blob/main/LICENSE).
-© 2025 Surinder Singh. All rights reserved.
+Licensed under the [MIT License](https://github.com/surinderlohat/searchkit/blob/main/LICENSE).
+© 2026 Surinder Singh. All rights reserved.

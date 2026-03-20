@@ -1,4 +1,4 @@
-# ChromaDB Wrapper Service
+# SearchKit
 
 > **Plug-in vector search for any stack — one container, zero config, production ready.**
 
@@ -32,7 +32,7 @@ This service acts as a **dedicated semantic search layer** that sits alongside y
 Your Main Service
       │
       ▼  HTTP
-chroma-wrapper (FastAPI :9000)
+searchkit (FastAPI :9000)
    └── ChromaDB (embedded, in-process)
          │
          ▼
@@ -217,9 +217,9 @@ Using the default `BAAI/bge-small-en-v1.5` model (384 dimensions):
 
 ```yaml
 services:
-  chroma-wrapper:
-    image: yourname/chroma-wrapper:latest
-    container_name: chroma-wrapper
+  searchkit:
+    image: yourname/searchkit:latest
+    container_name: searchkit
     restart: unless-stopped
     ports:
       - "9000:9000"
@@ -243,7 +243,7 @@ import httpx
 
 async def insert_document(id: str, text: str, metadata: dict):
     async with httpx.AsyncClient() as client:
-        await client.post("http://chroma-wrapper:9000/documents/upsert", json={
+        await client.post("http://searchkit:9000/documents/upsert", json={
             "collection": "default",
             "id": id,
             "text": text,
@@ -252,7 +252,7 @@ async def insert_document(id: str, text: str, metadata: dict):
 
 async def search(query: str) -> list:
     async with httpx.AsyncClient() as client:
-        res = await client.post("http://chroma-wrapper:9000/search", json={
+        res = await client.post("http://searchkit:9000/search", json={
             "query": query,
             "top_k": 5,
             "collection": "default",
@@ -395,4 +395,4 @@ This project is built on the shoulders of some fantastic open source tools and m
 Created by **Surinder Singh** — [github.com/surinderlohat](https://github.com/surinderlohat)
 
 Licensed under the [MIT License](./LICENSE).
-© 2025 Surinder Singh. All rights reserved.
+© 2026 Surinder Singh. All rights reserved.

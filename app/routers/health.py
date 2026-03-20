@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Surinder Singh (https://github.com/surinderlohat)
+# Copyright (c) 2026 Surinder Singh (https://github.com/surinderlohat)
 # Licensed under the MIT License. See LICENSE file in the project root.
 from fastapi import APIRouter, HTTPException
 

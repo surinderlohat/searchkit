@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Surinder Singh (https://github.com/surinderlohat)
+# Copyright (c) 2026 Surinder Singh (https://github.com/surinderlohat)
 # Licensed under the MIT License. See LICENSE file in the project root.
 from __future__ import annotations
 
@@ -24,8 +24,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="ChromaDB Wrapper Service",
-    description="Single-container vector store service with embedded ChromaDB.",
+    title="SearchKit",
+    description="Plug-in semantic search for any stack — one container, zero config, production ready.",
     version="2.0.0",
     lifespan=lifespan,
 )

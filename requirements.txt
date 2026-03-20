@@ -1,11 +1,6 @@
-# ── CPU-only torch — installed via PyTorch's CPU index
-# Using --index-url ensures pip never pulls CUDA builds (~2.5 GB)
-# No version pin — pip picks the latest CPU build compatible with Python version
---index-url https://download.pytorch.org/whl/cpu
-torch
-torchvision
-
 # ── Core dependencies
+# NOTE: torch is installed separately in Dockerfile via PyTorch CPU index
+# to avoid pulling the CUDA build (~2.5 GB)
 fastapi==0.115.0
 uvicorn[standard]==0.30.6
 chromadb==0.5.23

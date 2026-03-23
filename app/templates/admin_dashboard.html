@@ -14,14 +14,20 @@
       <button onclick="showPage('docs')"        class="nav-item">≡ Documents</button>
       <button onclick="showPage('collections')" class="nav-item">⊞ Collections</button>
       <button onclick="showPage('import')"      class="nav-item">⇑ CSV Import</button>
+      <button onclick="showPage('jobs')"        class="nav-item">⟳ Jobs</button>
       <button onclick="showPage('logs')"        class="nav-item">▸ Live Logs</button>
+      {% if user.role == 'admin' %}
+      <div class="pt-2 mt-2 border-t border-border">
+        <p class="text-[10px] text-slate-600 uppercase tracking-widest px-3 mb-1">Admin Only</p>
+        <button onclick="showPage('users')"   class="nav-item">👤 Users</button>
+        <button onclick="showPage('keys')"    class="nav-item">🔑 API Keys</button>
+      </div>
+      {% endif %}
     </nav>
     <div class="border-t border-border pt-4 space-y-2">
-      <div>
-        <p class="text-[10px] text-slate-600 uppercase tracking-widest px-3 mb-1">API Key</p>
-        <input type="password" id="api-key-input" placeholder="X-API-Key"
-          class="w-full bg-[#0a0a0f] border border-border rounded px-2 py-1.5 text-xs font-mono text-slate-400 outline-none focus:border-brand"
-          onchange="saveApiKey(this.value)">
+      <div class="text-xs text-slate-600 px-3 pb-1">
+        Signed in as <span class="text-slate-400">{{ user.username }}</span>
+        <span class="ml-1 px-1.5 py-0.5 rounded text-[10px] {% if user.role == 'admin' %}bg-brand/10 text-brand{% else %}bg-indigo-500/10 text-indigo-400{% endif %}">{{ user.role }}</span>
       </div>
       <a href="/admin/logout" class="flex items-center gap-2 px-3 py-2 text-slate-500 hover:text-red-400 text-xs rounded-lg transition-colors font-mono">↩ Sign out</a>
     </div>
@@ -34,7 +40,12 @@
     {% include "partials/page_documents.html" %}
     {% include "partials/page_collections.html" %}
     {% include "partials/page_import.html" %}
+    {% include "partials/page_jobs.html" %}
     {% include "partials/page_logs.html" %}
+    {% if user.role == 'admin' %}
+    {% include "partials/page_users.html" %}
+    {% include "partials/page_keys.html" %}
+    {% endif %}
   </main>
 
 </div>
@@ -64,7 +75,7 @@
 </style>
 
 <script>
-const PAGES = ['stats','search','docs','collections','import','logs'];
+const PAGES = ['stats','search','docs','collections','import','jobs','logs','users','keys'];
 let logFilter = 'ALL', allLogs = [], sseSource = null, autoScroll = true;
 let csvFile = null, csvColumns = [], csvPreviewData = [];
 
@@ -90,10 +101,10 @@ async function adminApi(path, opts = {}) {
   return res.json();
 }
 
-// Public API endpoints — require X-API-Key header
+// Public API — admin bypasses key via session cookie on same origin
 async function publicApi(path, opts = {}) {
   const res = await fetch(path, {
-    headers: { 'Content-Type': 'application/json', 'X-API-Key': API_KEY() },
+    headers: { 'Content-Type': 'application/json' },
     ...opts,
   });
   if (!res.ok) throw new Error(await res.text());
@@ -187,15 +198,27 @@ async function runSearch() {
   try {
     const data = await publicApi('/search', { method:'POST', body: JSON.stringify({query, collection, top_k}) });
     container.innerHTML = data.results.length
-      ? data.results.map(r=>`
+      ? data.results.map((r, idx) => {
+          const pct      = Math.round((r.similarity || 0) * 100);
+          const barColor = pct >= 80 ? 'bg-brand' : pct >= 50 ? 'bg-yellow-400' : 'bg-red-400';
+          return `
           <div class="bg-[#16161f] border border-border rounded-lg p-4 mb-2">
-            <div class="flex justify-between items-center mb-1.5">
-              <span class="text-indigo-400 text-xs"># ${escHtml(r.id)}</span>
-              <span class="text-slate-500 text-xs">distance: ${r.distance}</span>
+            <div class="flex justify-between items-center mb-2">
+              <div class="flex items-center gap-2">
+                <span class="text-[11px] font-display font-bold text-slate-500">#${idx + 1}</span>
+                <span class="text-indigo-400 text-xs font-mono">${escHtml(r.id)}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="w-24 bg-border rounded-full h-1.5 overflow-hidden">
+                  <div class="${barColor} h-full rounded-full" style="width:${pct}%"></div>
+                </div>
+                <span class="text-xs font-display font-bold ${pct >= 80 ? 'text-brand' : pct >= 50 ? 'text-yellow-400' : 'text-red-400'}">${pct}%</span>
+              </div>
             </div>
-            <p class="text-slate-200 text-sm leading-relaxed mb-1">${escHtml(r.text)}</p>
-            <p class="text-slate-500 text-xs italic">${Object.keys(r.metadata).length ? escHtml(JSON.stringify(r.metadata)) : 'no metadata'}</p>
-          </div>`).join('')
+            <p class="text-slate-200 text-sm leading-relaxed mb-1.5">${escHtml(r.text)}</p>
+            <p class="text-slate-500 text-xs italic">${r.metadata && Object.keys(r.metadata).length ? escHtml(JSON.stringify(r.metadata)) : 'no metadata'}</p>
+          </div>`;
+        }).join('')
       : '<p class="text-slate-500 text-sm text-center py-8">No results found.</p>';
   } catch(e) { container.innerHTML = `<p class="text-red-400 text-sm py-2">Error: ${escHtml(e.message)}</p>`; }
 }
@@ -216,7 +239,7 @@ async function loadDocs() {
             <div class="flex-1 overflow-hidden">
               <p class="text-indigo-400 text-xs mb-1">${escHtml(d.id)}</p>
               <p class="text-slate-200 text-sm truncate">${escHtml(d.text)}</p>
-              <p class="text-slate-500 text-xs mt-1 italic">${Object.keys(d.metadata).length ? escHtml(JSON.stringify(d.metadata)) : 'no metadata'}</p>
+              <p class="text-slate-500 text-xs mt-1 italic">${d.metadata && Object.keys(d.metadata).length ? escHtml(JSON.stringify(d.metadata)) : 'no metadata'}</p>
             </div>
             <button onclick="deleteDoc('${escAttr(d.id)}','${escAttr(collection)}')"
               class="shrink-0 px-3 py-1.5 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-lg hover:bg-red-500/20 transition-colors font-display font-bold">
@@ -294,9 +317,86 @@ function showCsvStep2() {
   document.getElementById('import-id-field').innerHTML = csvColumns.map(c=>`<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('');
   document.getElementById('text-field-checkboxes').innerHTML = csvColumns.map(c=>`
     <label class="checkbox-label">
-      <input type="checkbox" value="${escHtml(c)}" class="sr-only">
+      <input type="checkbox" value="${escHtml(c)}" class="sr-only" onchange="updateTextPreview()">
       <span>${escHtml(c)}</span>
     </label>`).join('');
+  updateTextPreview();
+}
+
+function resumeImport(fromRow) {
+  // Navigate to import page and pre-fill the start_from field
+  showPage('import');
+  setTimeout(() => {
+    const input = document.getElementById('import-start-from');
+    if (input) {
+      input.value = fromRow;
+      input.style.borderColor = '#fbbf24';  // highlight in yellow
+      toast(`Start from row set to ${fromRow} — re-upload your CSV to resume`);
+    }
+  }, 100);
+}
+
+async function loadJobs() {
+  const container = document.getElementById('jobs-list');
+  try {
+    const data = await adminApi('/api/jobs');
+    const statusColor = { pending:'text-slate-500', running:'text-yellow-400', done:'text-brand', failed:'text-red-400' };
+    const statusIcon  = { pending:'○', running:'◌', done:'✓', failed:'✗' };
+    container.innerHTML = data.jobs.length
+      ? data.jobs.map(j => `
+          <div class="flex items-start justify-between py-3 border-b border-border/50 last:border-0">
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="font-medium ${statusColor[j.status]||'text-slate-400'}">${statusIcon[j.status]||'?'} ${escHtml(j.name)}</span>
+                <span class="text-xs text-slate-600 font-mono">#${j.id}</span>
+              </div>
+              ${j.status === 'running' ? `
+                <div class="flex items-center gap-2 mb-1">
+                  <div class="flex-1 bg-border rounded-full h-1.5 overflow-hidden max-w-xs">
+                    <div class="h-full rounded-full bg-yellow-400 transition-all" style="width:${j.progress}%"></div>
+                  </div>
+                  <span class="text-xs text-slate-500">${j.progress}%</span>
+                </div>` : ''}
+              <p class="text-xs text-slate-500">
+                ${j.imported ? `Imported: ${j.imported}` : ''}
+                ${j.skipped  ? ` &nbsp; Skipped: ${j.skipped}` : ''}
+                ${j.total    ? ` &nbsp; Total rows: ${j.total}` : ''}
+                ${j.error    ? `<span class="text-red-400 ml-1">${escHtml(j.error)}</span>` : ''}
+              ${j.status === 'failed' && j.imported > 0 ? `
+                <button onclick="resumeImport(${j.imported})"
+                  class="mt-1 px-3 py-1 bg-yellow-400/10 border border-yellow-400/30 text-yellow-400 text-xs rounded-lg hover:bg-yellow-400/20 transition-colors font-display font-bold">
+                  ↩ Resume from row ${j.imported}
+                </button>` : ''}
+              </p>
+              <p class="text-xs text-slate-600 mt-0.5">${j.created_at.slice(0,19).replace('T',' ')}${j.finished_at ? ' → ' + j.finished_at.slice(0,19).replace('T',' ') : ''}</p>
+            </div>
+          </div>`).join('')
+      : '<p class="text-slate-500 text-sm text-center py-8">No jobs yet.</p>';
+  } catch(e) { container.innerHTML = `<p class="text-red-400 text-sm py-2">Error: ${escHtml(e.message)}</p>`; }
+}
+
+function setSep(sep) {
+  document.getElementById('import-separator').value = sep;
+  // Update active preset button
+  document.querySelectorAll('.sep-btn').forEach(b => b.classList.remove('active', 'border-brand', 'text-brand'));
+  event.target.classList.add('active', 'border-brand', 'text-brand');
+  updateTextPreview();
+}
+
+function updateTextPreview() {
+  const sep      = document.getElementById('import-separator')?.value ?? ' ';
+  const checked  = [...document.querySelectorAll('#text-field-checkboxes input:checked')].map(i => i.value);
+  const preview  = document.getElementById('text-preview');
+  if (!preview) return;
+  if (!checked.length || !csvPreviewData.length) {
+    preview.textContent = 'Select text fields to see preview…';
+    preview.className   = preview.className.replace('text-brand', 'text-slate-500');
+    return;
+  }
+  const row    = csvPreviewData[0];
+  const result = checked.map(f => (row[f] || '').trim()).filter(Boolean).join(sep);
+  preview.textContent = result || '(empty — check field values in preview)';
+  preview.className   = preview.className.replace('text-slate-500', 'text-brand');
 }
 
 async function startImport() {
@@ -308,37 +408,52 @@ async function startImport() {
   document.getElementById('import-step3').classList.remove('hidden');
   document.getElementById('import-step2').classList.add('hidden');
   const form = new FormData();
+  const separator  = document.getElementById('import-separator').value;
+  const start_from = parseInt(document.getElementById('import-start-from')?.value || '0');
   form.append('file', csvFile);
   form.append('collection', collection);
   form.append('id_field', id_field);
   form.append('text_fields', checked.join(','));
+  form.append('text_separator', separator);
   form.append('batch_size', batch_size);
-  const res     = await fetch('/admin/api/csv/import', { method:'POST', body: form });
-  const reader  = res.body.getReader();
-  const decoder = new TextDecoder();
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    for (const line of decoder.decode(value).split('\n').filter(l=>l.startsWith('data:'))) {
-      try {
-        const ev = JSON.parse(line.slice(5));
-        if (ev.type === 'progress') {
-          document.getElementById('import-progress-bar').style.width = ev.progress + '%';
-          document.getElementById('import-progress-pct').textContent = ev.progress + '%';
-          document.getElementById('import-progress-label').textContent = `Imported ${ev.imported} rows…`;
-        } else if (ev.type === 'done') {
-          document.getElementById('import-progress-bar').style.width = '100%';
-          document.getElementById('import-progress-pct').textContent = '100%';
-          document.getElementById('import-progress-label').textContent = 'Complete!';
-          document.getElementById('import-result').innerHTML = `
-            <p class="text-brand">✓ Import complete</p>
-            <p class="text-slate-500 mt-1">Imported: <span class="text-slate-200">${ev.imported}</span> &nbsp; Skipped: <span class="text-slate-200">${ev.skipped}</span> &nbsp; Total: <span class="text-slate-200">${ev.total}</span></p>
-            <button onclick="resetImport()" class="btn-primary mt-4 text-sm">Import Another</button>`;
-          loadStats();
-        }
-      } catch(_) {}
-    }
-  }
+  form.append('start_from', start_from);
+  // Submit to background job — returns immediately with job_id
+  const res  = await fetch('/admin/api/csv/import', { method:'POST', body: form });
+  const data = await res.json();
+  if (!res.ok) { toast(`Import failed: ${data.detail}`, 'error'); return; }
+
+  // Poll job status every second
+  const jobId = data.job_id;
+  document.getElementById('import-progress-label').textContent = 'Job queued — starting…';
+
+  const poll = setInterval(async () => {
+    try {
+      const job = await adminApi(`/api/jobs/${jobId}`);
+      document.getElementById('import-progress-bar').style.width = job.progress + '%';
+      document.getElementById('import-progress-pct').textContent = job.progress + '%';
+
+      if (job.status === 'running') {
+        document.getElementById('import-progress-label').textContent = `Imported ${job.imported} of ${job.total} rows…`;
+      } else if (job.status === 'done') {
+        clearInterval(poll);
+        document.getElementById('import-progress-label').textContent = 'Complete!';
+        document.getElementById('import-result').innerHTML = `
+          <p class="text-brand">✓ Import complete</p>
+          <p class="text-slate-500 mt-1">Imported: <span class="text-slate-200">${job.imported}</span> &nbsp; Skipped: <span class="text-slate-200">${job.skipped}</span> &nbsp; Total: <span class="text-slate-200">${job.total}</span></p>
+          <button onclick="resetImport()" class="btn-primary mt-4 text-sm">Import Another</button>`;
+        loadStats();
+      } else if (job.status === 'failed') {
+        clearInterval(poll);
+        document.getElementById('import-progress-label').textContent = 'Failed';
+        document.getElementById('import-result').innerHTML = `
+          <p class="text-red-400">✗ Import failed</p>
+          <p class="text-slate-500 mt-1 font-mono text-xs">${escHtml(job.error)}</p>
+          <button onclick="resetImport()" class="btn-primary mt-4 text-sm">Try Again</button>`;
+      }
+    } catch(e) { clearInterval(poll); }
+  }, 1000);
+
+  toast('Import started in background — you can navigate away');
 }
 
 function resetImport() {
@@ -347,6 +462,9 @@ function resetImport() {
   document.getElementById('import-progress-bar').style.width = '0%';
   document.getElementById('import-result').innerHTML = '';
   document.getElementById('csv-file').value = '';
+  document.getElementById('import-separator').value = ' ';
+  if (document.getElementById('import-start-from')) document.getElementById('import-start-from').value = '0';
+  document.getElementById('text-preview').textContent = 'Select text fields to see preview…';
 }
 
 // ── SSE Logs ──────────────────────────────────────────────
@@ -397,10 +515,127 @@ document.getElementById('log-wrap').addEventListener('scroll', function() {
   autoScroll = this.scrollTop + this.clientHeight >= this.scrollHeight - 20;
 });
 
-// ── Init ───────────────────────────────────────────────────
-const savedKey = localStorage.getItem('sk_api_key') || '';
-if (savedKey) document.getElementById('api-key-input').value = savedKey;
+// ── Users ─────────────────────────────────────────────────
+async function loadUsers() {
+  const container = document.getElementById('users-list');
+  try {
+    const data = await adminApi('/api/users');
+    const roleColor = { admin:'bg-brand/10 text-brand', readwrite:'bg-indigo-500/10 text-indigo-400', readonly:'bg-slate-500/10 text-slate-400' };
+    container.innerHTML = data.users.length
+      ? data.users.map(u => `
+          <div class="flex items-center justify-between py-3 border-b border-border/50 last:border-0">
+            <div>
+              <p class="text-sm text-slate-200">${escHtml(u.username)}</p>
+              <p class="text-xs text-slate-500">${u.created_at.slice(0,10)}</p>
+            </div>
+            <div class="flex items-center gap-3">
+              ${u.role === 'admin'
+                ? `<span class="px-2 py-0.5 rounded text-xs bg-brand/10 text-brand">admin</span>
+                   <span class="text-xs text-slate-600 italic">protected</span>`
+                : `<select onchange="updateUserRole('${escAttr(u.id)}', this.value)"
+                    class="bg-[#0a0a0f] border border-border rounded px-2 py-1 text-xs font-mono text-slate-300 outline-none focus:border-brand transition-colors">
+                    <option value="readwrite" ${u.role==='readwrite'?'selected':''}>readwrite</option>
+                    <option value="readonly"  ${u.role==='readonly' ?'selected':''}>readonly</option>
+                  </select>
+                  <button onclick="removeUser('${escAttr(u.id)}','${escAttr(u.username)}')"
+                    class="px-3 py-1.5 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-lg hover:bg-red-500/20 transition-colors font-display font-bold">
+                    Remove
+                  </button>`
+              }
+            </div>
+          </div>`).join('')
+      : '<p class="text-slate-500 text-sm text-center py-8">No users yet.</p>';
+  } catch(e) { container.innerHTML = `<p class="text-red-400 text-sm py-2">Error: ${escHtml(e.message)}</p>`; }
+}
 
+async function addUser() {
+  const username = document.getElementById('new-username').value.trim();
+  const password = document.getElementById('new-user-password').value.trim();
+  const role     = document.getElementById('new-user-role').value;
+  if (!username || !password) { toast('Username and password required', 'error'); return; }
+  try {
+    await adminApi('/api/users', { method:'POST', body: JSON.stringify({username, password, role}) });
+    document.getElementById('new-username').value = '';
+    document.getElementById('new-user-password').value = '';
+    toast(`User '${username}' created`);
+    loadUsers();
+  } catch(e) { toast(`Failed: ${e.message}`, 'error'); }
+}
+
+async function updateUserRole(id, role) {
+  try {
+    await adminApi(`/api/users/${id}`, { method:'PATCH', body: JSON.stringify({role}) });
+    toast(`Role updated to '${role}'`);
+  } catch(e) { toast(`Failed: ${e.message}`, 'error'); loadUsers(); }
+}
+
+async function removeUser(id, username) {
+  if (!confirm(`Remove user "${username}"?`)) return;
+  try {
+    await adminApi(`/api/users/${id}`, { method:'DELETE' });
+    toast(`User '${username}' removed`);
+    loadUsers();
+  } catch(e) { toast(`Failed: ${e.message}`, 'error'); }
+}
+
+// ── API Keys ───────────────────────────────────────────────
+async function loadKeys() {
+  const container = document.getElementById('keys-list');
+  try {
+    const data = await adminApi('/api/keys');
+    container.innerHTML = data.keys.length
+      ? data.keys.map(k => `
+          <div class="flex items-center justify-between py-3 border-b border-border/50 last:border-0">
+            <div>
+              <p class="text-sm text-slate-200">${escHtml(k.name)}</p>
+              <p class="text-xs text-slate-500 font-mono">${escHtml(k.preview)} &nbsp;·&nbsp; by ${escHtml(k.created_by)} &nbsp;·&nbsp; ${k.created_at.slice(0,10)}</p>
+            </div>
+            <button onclick="revokeKey('${escAttr(k.id)}','${escAttr(k.name)}')"
+              class="px-3 py-1.5 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-lg hover:bg-red-500/20 transition-colors font-display font-bold">
+              Revoke
+            </button>
+          </div>`).join('')
+      : '<p class="text-slate-500 text-sm text-center py-8">No API keys yet.</p>';
+  } catch(e) { container.innerHTML = `<p class="text-red-400 text-sm py-2">Error: ${escHtml(e.message)}</p>`; }
+}
+
+async function createKey() {
+  const name = document.getElementById('new-key-name').value.trim();
+  if (!name) { toast('Key name required', 'error'); return; }
+  try {
+    const data = await adminApi('/api/keys', { method:'POST', body: JSON.stringify({name}) });
+    document.getElementById('new-key-name').value = '';
+    // Show banner with the raw key — only shown once
+    document.getElementById('new-key-value').textContent = data.key;
+    document.getElementById('new-key-banner').classList.remove('hidden');
+    loadKeys();
+  } catch(e) { toast(`Failed: ${e.message}`, 'error'); }
+}
+
+function copyKey() {
+  const key = document.getElementById('new-key-value').textContent;
+  navigator.clipboard.writeText(key).then(() => toast('Key copied to clipboard'));
+}
+
+async function revokeKey(id, name) {
+  if (!confirm(`Revoke key "${name}"? This cannot be undone.`)) return;
+  try {
+    await adminApi(`/api/keys/${id}`, { method:'DELETE' });
+    toast(`Key '${name}' revoked`);
+    loadKeys();
+  } catch(e) { toast(`Failed: ${e.message}`, 'error'); }
+}
+
+// ── Load page data when navigating ────────────────────────
+const _origShowPage = showPage;
+showPage = function(name) {
+  _origShowPage(name);
+  if (name === 'users') loadUsers();
+  if (name === 'keys')  loadKeys();
+  if (name === 'jobs')  loadJobs();
+};
+
+// ── Init ───────────────────────────────────────────────────
 loadStats();
 setInterval(loadStats, 10000);
 </script>

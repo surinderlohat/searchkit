@@ -2,8 +2,6 @@
 # Licensed under the MIT License. See LICENSE file in the project root.
 from __future__ import annotations
 
-import os
-
 from fastapi import HTTPException, Security
 from fastapi.security import APIKeyHeader
 
@@ -11,29 +9,31 @@ from app.logger import get_logger
 
 logger = get_logger(__name__)
 
-# Read API key from environment — set via docker-compose
-API_KEY = os.getenv("API_KEY", "")
 API_KEY_HEADER = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 
-def verify_api_key(api_key: str = Security(API_KEY_HEADER)) -> str:
+def check_api_key(api_key: str) -> str:
     """
-    Validates the API key from the X-API-Key request header.
+    Core key verification — accepts a raw string.
+    Used both by the FastAPI dependency and the combined session_or_api_key auth.
+    If no keys exist in DB yet, open access is allowed (initial setup).
+    """
+    from app.store import list_api_keys
+    from app.store import verify_api_key as db_verify
 
-    - If API_KEY env var is not set → auth is disabled (open access)
-    - If API_KEY is set → key must match exactly or request is rejected
-    """
-    # Auth disabled — no API_KEY configured
-    if not API_KEY:
-        logger.debug("API key auth disabled — no API_KEY configured")
+    if not list_api_keys():
+        logger.debug("No API keys configured — open access")
         return ""
-
-    if api_key == API_KEY:
-        logger.debug("API key verified successfully")
+    if api_key and db_verify(api_key):
+        logger.debug("API key verified")
         return api_key
-
-    logger.warning("Unauthorized request — invalid or missing API key")
+    logger.warning("Unauthorized — invalid or missing API key")
     raise HTTPException(
         status_code=401,
         detail="Invalid or missing API key. Pass it via the X-API-Key header.",
     )
+
+
+def verify_api_key(api_key: str = Security(API_KEY_HEADER)) -> str:
+    """FastAPI dependency — reads X-API-Key from request header."""
+    return check_api_key(api_key)

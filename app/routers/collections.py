@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException
 
 from app.db import delete_collection, get_collection, list_collections
 from app.logger import get_logger
-from app.schemas import CollectionInfo, CollectionListResponse, StatusResponse
+from app.schemas import CollectionCreateRequest, CollectionInfo, CollectionListResponse, StatusResponse
 
 logger = get_logger(__name__)
 router = APIRouter()
@@ -21,6 +21,14 @@ def get_all_collections():
         collections.append(CollectionInfo(name=name, count=col.count()))
     logger.info(f"Found {len(collections)} collections")
     return CollectionListResponse(collections=collections, total=len(collections))
+
+
+@router.post("", response_model=CollectionInfo)
+def create_collection(body: CollectionCreateRequest):
+    """Create a new collection. Safe to call if it already exists."""
+    logger.info(f"Creating collection '{body.name}'")
+    col = get_collection(body.name)
+    return CollectionInfo(name=body.name, count=col.count())
 
 
 @router.get("/{name}", response_model=CollectionInfo)

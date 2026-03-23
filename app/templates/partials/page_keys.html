@@ -1,0 +1,35 @@
+{# ── API Keys page (admin only) ── #}
+<div id="page-keys" class="page hidden">
+  <h2 class="font-display text-2xl font-bold tracking-tight mb-6">API Keys <span class="text-brand">·</span> Manage</h2>
+
+  <!-- New key revealed banner -->
+  <div id="new-key-banner" class="hidden bg-brand/10 border border-brand/30 rounded-xl p-5 max-w-2xl mb-6">
+    <p class="text-brand text-sm font-display font-bold mb-2">✓ New API Key Created — Copy it now!</p>
+    <p class="text-slate-400 text-xs mb-3">This key will never be shown again.</p>
+    <div class="flex gap-2 items-center">
+      <code id="new-key-value" class="flex-1 bg-[#0a0a0f] border border-border rounded px-3 py-2 text-brand text-sm font-mono break-all"></code>
+      <button onclick="copyKey()" class="btn-primary text-sm shrink-0">Copy</button>
+    </div>
+  </div>
+
+  <!-- Create key -->
+  <div class="bg-surface border border-border rounded-xl p-5 max-w-2xl mb-6">
+    <p class="text-[11px] text-slate-500 uppercase tracking-widest mb-4">Create New API Key</p>
+    <div class="flex gap-3">
+      <div class="flex-1">
+        <label class="lbl">Key Name <span class="text-slate-600 normal-case text-xs tracking-normal">— e.g. "production-app" or "team-member"</span></label>
+        <input type="text" id="new-key-name" placeholder="my-service" class="inp"
+          onkeydown="if(event.key==='Enter') createKey()">
+      </div>
+      <div class="flex items-end">
+        <button onclick="createKey()" class="btn-primary">Generate Key</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Keys list -->
+  <div class="bg-surface border border-border rounded-xl p-5">
+    <p class="text-[11px] text-slate-500 uppercase tracking-widest mb-4">Active API Keys</p>
+    <div id="keys-list"><p class="text-slate-500 text-sm text-center py-8">Loading…</p></div>
+  </div>
+</div>

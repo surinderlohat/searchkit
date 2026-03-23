@@ -28,12 +28,13 @@ def semantic_search(req: SearchRequest):
             include=["documents", "metadatas", "distances"],
         )
 
-        # Use from_chroma() factory — maps ChromaDB's 'document' key to our 'text' field
+        # ChromaDB returns results sorted by distance ascending (most similar first)
+        # No re-sorting needed — trust the DB order
         documents = [
             DocumentResult.from_chroma(
                 id=results["ids"][0][i],
                 document=results["documents"][0][i],
-                metadata=results["metadatas"][0][i] if results["metadatas"] else {},
+                metadata=results["metadatas"][0][i] or {} if results["metadatas"] else {},
                 distance=results["distances"][0][i],
             )
             for i in range(len(results["ids"][0]))

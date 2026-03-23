@@ -1,0 +1,34 @@
+{# ── Users page (admin only) ── #}
+<div id="page-users" class="page hidden">
+  <h2 class="font-display text-2xl font-bold tracking-tight mb-6">Users <span class="text-brand">·</span> Manage</h2>
+
+  <!-- Add user -->
+  <div class="bg-surface border border-border rounded-xl p-5 max-w-2xl mb-6">
+    <p class="text-[11px] text-slate-500 uppercase tracking-widest mb-4">Add New User</p>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+      <div>
+        <label class="lbl">Username</label>
+        <input type="text" id="new-username" placeholder="username" class="inp">
+      </div>
+      <div>
+        <label class="lbl">Password</label>
+        <input type="password" id="new-user-password" placeholder="password" class="inp">
+      </div>
+      <div>
+        <label class="lbl">Role</label>
+        <select id="new-user-role" class="inp">
+          <option value="readwrite">readwrite — can search, insert, delete</option>
+          <option value="readonly">readonly — can only search and read</option>
+        </select>
+      </div>
+    </div>
+    <button onclick="addUser()" class="btn-primary">Add User</button>
+  </div>
+
+  <!-- Users list -->
+  <div class="bg-surface border border-border rounded-xl p-5 max-w-2xl">
+    <p class="text-[11px] text-slate-500 uppercase tracking-widest mb-1">All Users</p>
+    <p class="text-xs text-slate-600 mb-4">The admin account cannot be removed.</p>
+    <div id="users-list"><p class="text-slate-500 text-sm text-center py-8">Loading…</p></div>
+  </div>
+</div>

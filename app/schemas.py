@@ -73,7 +73,7 @@ class DeleteRequest(BaseModel):
 class DocumentResult(BaseModel):
     id: str
     text: str  # our API field name
-    metadata: dict[str, Any]
+    metadata: dict[str, Any] = Field(default_factory=dict)
     distance: float
 
     @classmethod
@@ -81,11 +81,11 @@ class DocumentResult(BaseModel):
         cls,
         id: str,
         document: str,
-        metadata: dict,
+        metadata: dict | None,
         distance: float,
     ) -> DocumentResult:
         """Factory method — maps ChromaDB's 'document' field to our 'text' field."""
-        return cls(id=id, text=document, metadata=metadata, distance=distance)
+        return cls(id=id, text=document, metadata=metadata or {}, distance=distance)
 
 
 # ── Search ─────────────────────────────────────────────────
@@ -119,6 +119,12 @@ class SearchResponse(BaseModel):
 
 
 # ── Collections ────────────────────────────────────────────
+
+
+class CollectionCreateRequest(BaseModel):
+    name: str
+
+    model_config = {"json_schema_extra": {"example": {"name": "my-collection"}}}
 
 
 class CollectionInfo(BaseModel):

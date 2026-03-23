@@ -1,0 +1,642 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block body %}
+<div class="flex min-h-screen">
+
+  <!-- ── Sidebar ── -->
+  <aside class="w-56 min-h-screen bg-surface border-r border-border flex flex-col px-4 py-6 fixed top-0 left-0 bottom-0 z-10">
+    <h1 class="font-display text-xl font-extrabold tracking-tight mb-0.5">Search<span class="text-brand">Kit</span></h1>
+    <p class="text-slate-500 text-[11px] mb-8">Admin Dashboard</p>
+    <nav class="flex-1 space-y-1">
+      <button onclick="showPage('stats')"       class="nav-item active">◈ Overview</button>
+      <button onclick="showPage('search')"      class="nav-item">⌕ Search</button>
+      <button onclick="showPage('docs')"        class="nav-item">≡ Documents</button>
+      <button onclick="showPage('collections')" class="nav-item">⊞ Collections</button>
+      <button onclick="showPage('import')"      class="nav-item">⇑ CSV Import</button>
+      <button onclick="showPage('jobs')"        class="nav-item">⟳ Jobs</button>
+      <button onclick="showPage('logs')"        class="nav-item">▸ Live Logs</button>
+      {% if user.role == 'admin' %}
+      <div class="pt-2 mt-2 border-t border-border">
+        <p class="text-[10px] text-slate-600 uppercase tracking-widest px-3 mb-1">Admin Only</p>
+        <button onclick="showPage('users')"   class="nav-item">👤 Users</button>
+        <button onclick="showPage('keys')"    class="nav-item">🔑 API Keys</button>
+      </div>
+      {% endif %}
+    </nav>
+    <div class="border-t border-border pt-4 space-y-2">
+      <div class="text-xs text-slate-600 px-3 pb-1">
+        Signed in as <span class="text-slate-400">{{ user.username }}</span>
+        <span class="ml-1 px-1.5 py-0.5 rounded text-[10px] {% if user.role == 'admin' %}bg-brand/10 text-brand{% else %}bg-indigo-500/10 text-indigo-400{% endif %}">{{ user.role }}</span>
+      </div>
+      <a href="/admin/logout" class="flex items-center gap-2 px-3 py-2 text-slate-500 hover:text-red-400 text-xs rounded-lg transition-colors font-mono">↩ Sign out</a>
+    </div>
+  </aside>
+
+  <!-- ── Main ── -->
+  <main class="ml-56 flex-1 p-8">
+    {% include "partials/page_overview.html" %}
+    {% include "partials/page_search.html" %}
+    {% include "partials/page_documents.html" %}
+    {% include "partials/page_collections.html" %}
+    {% include "partials/page_import.html" %}
+    {% include "partials/page_jobs.html" %}
+    {% include "partials/page_logs.html" %}
+    {% if user.role == 'admin' %}
+    {% include "partials/page_users.html" %}
+    {% include "partials/page_keys.html" %}
+    {% endif %}
+  </main>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+  .nav-item       { width:100%; display:flex; align-items:center; gap:0.5rem; padding:0.5rem 0.75rem; border-radius:0.5rem; font-size:0.82rem; font-family:'DM Mono',monospace; color:#64748b; border:none; background:none; cursor:pointer; text-align:left; transition:all 0.15s; }
+  .nav-item:hover { color:#e2e8f0; background:#1e1e2e; }
+  .nav-item.active{ color:#6ee7b7; background:rgba(110,231,183,0.08); }
+  .page           { display:block; }
+  .page.hidden    { display:none; }
+  .stat-card      { background:#12121a; border:1px solid #1e1e2e; border-radius:0.75rem; padding:1.25rem; position:relative; overflow:hidden; }
+  .stat-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
+  .th  { text-align:left; font-size:11px; color:#64748b; text-transform:uppercase; letter-spacing:0.08em; padding:0.5rem 0.5rem 0.75rem; }
+  .lbl { display:block; font-size:11px; color:#64748b; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.375rem; }
+  .inp { width:100%; background:#0a0a0f; border:1px solid #1e1e2e; border-radius:0.5rem; padding:0.5rem 0.75rem; color:#e2e8f0; font-family:'DM Mono',monospace; font-size:0.85rem; outline:none; transition:border-color 0.15s; }
+  .inp:focus      { border-color:#6ee7b7; }
+  textarea.inp    { resize:vertical; }
+  .btn-primary    { background:#6ee7b7; color:#0a0a0f; font-family:'Syne',sans-serif; font-weight:700; font-size:0.85rem; padding:0.5rem 1.25rem; border-radius:0.5rem; border:none; cursor:pointer; transition:opacity 0.15s; }
+  .btn-primary:hover { opacity:0.85; }
+  .filter-btn     { padding:0.25rem 0.6rem; border-radius:0.3rem; border:1px solid #1e1e2e; background:none; color:#64748b; font-family:'DM Mono',monospace; font-size:0.72rem; cursor:pointer; transition:all 0.15s; }
+  .filter-btn.active { border-color:#6ee7b7; color:#6ee7b7; background:rgba(110,231,183,0.08); }
+  .checkbox-label { display:flex; align-items:center; gap:0.4rem; padding:0.3rem 0.6rem; border-radius:0.4rem; border:1px solid #1e1e2e; cursor:pointer; font-size:0.78rem; color:#94a3b8; transition:all 0.15s; }
+  .checkbox-label:hover { border-color:#6ee7b7; color:#e2e8f0; }
+  .checkbox-label:has(input:checked) { border-color:#6ee7b7; background:rgba(110,231,183,0.08); color:#6ee7b7; }
+</style>
+
+<script>
+const PAGES = ['stats','search','docs','collections','import','jobs','logs','users','keys'];
+let logFilter = 'ALL', allLogs = [], sseSource = null, autoScroll = true;
+let csvFile = null, csvColumns = [], csvPreviewData = [];
+
+// ── Navigation ─────────────────────────────────────────────
+function showPage(name) {
+  PAGES.forEach(p => document.getElementById('page-'+p).classList.toggle('hidden', p !== name));
+  document.querySelectorAll('.nav-item').forEach((n,i) => n.classList.toggle('active', PAGES[i] === name));
+  if (name === 'logs') connectSSE(); else disconnectSSE();
+}
+
+// ── API key ────────────────────────────────────────────────
+const API_KEY = () => localStorage.getItem('sk_api_key') || '';
+
+function saveApiKey(val) { localStorage.setItem('sk_api_key', val); }
+
+// Admin-only endpoints — use session cookie, no API key needed
+async function adminApi(path, opts = {}) {
+  const res = await fetch('/admin' + path, {
+    headers: { 'Content-Type': 'application/json' },
+    ...opts,
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+// Public API — admin bypasses key via session cookie on same origin
+async function publicApi(path, opts = {}) {
+  const res = await fetch(path, {
+    headers: { 'Content-Type': 'application/json' },
+    ...opts,
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+// ── Toggle insert form ─────────────────────────────────────
+function toggleInsertForm() {
+  const panel  = document.getElementById('insert-form-panel');
+  const btn    = document.getElementById('insert-toggle-btn');
+  const hidden = panel.classList.toggle('hidden');
+  btn.textContent = hidden ? '＋ Insert Document' : '✕ Close';
+}
+
+// ── Stats ──────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const data = await adminApi('/api/stats');
+    document.getElementById('stat-collections').textContent = data.collections.length;
+    const total = data.collections.reduce((s,c) => s+c.count, 0);
+    document.getElementById('stat-docs').textContent = total.toLocaleString();
+    document.getElementById('stat-mem').textContent  = data.memory_mb + ' MB';
+    document.getElementById('stat-mem-sub').textContent = `of ${data.memory_limit_mb} MB limit`;
+    const pct = Math.min((data.memory_mb / data.memory_limit_mb) * 100, 100);
+    const bar = document.getElementById('mem-bar');
+    bar.style.width = pct + '%';
+    bar.className = 'h-full rounded-full transition-all duration-500 ' + (pct>=90?'bg-red-400':pct>=75?'bg-yellow-400':'bg-brand');
+    document.getElementById('collections-table').innerHTML = data.collections.length
+      ? data.collections.map(c=>`<tr class="border-b border-border/50 hover:bg-white/[0.02]"><td class="px-2 py-2.5">${escHtml(c.name)}</td><td class="px-2 py-2.5"><span class="bg-brand/10 text-brand text-xs px-2 py-0.5 rounded">${c.count.toLocaleString()} docs</span></td><td class="px-2 py-2.5 text-green-400 text-xs">● active</td></tr>`).join('')
+      : '<tr><td colspan="3" class="text-center text-slate-500 py-8">No collections yet.</td></tr>';
+    populateSelects(data.collections.map(c=>c.name));
+    renderCollectionsManage(data.collections);
+  } catch(e) { console.error(e); }
+}
+
+function populateSelects(names) {
+  ['search-collection','docs-collection','insert-doc-collection','import-collection'].forEach(id => {
+    const sel = document.getElementById(id);
+    const cur = sel.value;
+    sel.innerHTML = names.map(n=>`<option value="${escHtml(n)}">${escHtml(n)}</option>`).join('');
+    if (cur && names.includes(cur)) sel.value = cur;
+  });
+}
+
+// ── Collections ────────────────────────────────────────────
+function renderCollectionsManage(collections) {
+  const el = document.getElementById('collections-manage-list');
+  el.innerHTML = collections.length
+    ? collections.map(c=>`
+        <div class="flex items-center justify-between py-3 border-b border-border/50 last:border-0">
+          <div>
+            <p class="text-sm text-slate-200">${escHtml(c.name)}</p>
+            <p class="text-xs text-slate-500">${c.count.toLocaleString()} documents</p>
+          </div>
+          <button onclick="dropCollection('${escAttr(c.name)}')"
+            class="px-3 py-1.5 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-lg hover:bg-red-500/20 transition-colors font-display font-bold">
+            Drop
+          </button>
+        </div>`).join('')
+    : '<p class="text-slate-500 text-sm text-center py-8">No collections yet.</p>';
+}
+
+async function createCollection() {
+  const name = document.getElementById('new-collection-name').value.trim();
+  if (!name) return;
+  try {
+    await publicApi('/collections', { method:'POST', body: JSON.stringify({name}) });
+    document.getElementById('new-collection-name').value = '';
+    toast(`Collection '${name}' created`);
+    loadStats();
+  } catch(e) { toast(`Failed: ${e.message}`, 'error'); }
+}
+
+async function dropCollection(name) {
+  if (!confirm(`Drop collection "${name}" and all its documents? This cannot be undone.`)) return;
+  try {
+    await publicApi(`/collections/${encodeURIComponent(name)}`, { method:'DELETE' });
+    toast(`Collection '${name}' dropped`);
+    loadStats();
+  } catch(e) { toast(`Failed: ${e.message}`, 'error'); }
+}
+
+// ── Search ─────────────────────────────────────────────────
+async function runSearch() {
+  const query      = document.getElementById('search-query').value.trim();
+  const collection = document.getElementById('search-collection').value;
+  const top_k      = parseInt(document.getElementById('search-topk').value);
+  const container  = document.getElementById('search-results');
+  if (!query) return;
+  container.innerHTML = '<p class="text-slate-500 text-sm py-2">Searching…</p>';
+  try {
+    const data = await publicApi('/search', { method:'POST', body: JSON.stringify({query, collection, top_k}) });
+    container.innerHTML = data.results.length
+      ? data.results.map((r, idx) => {
+          const pct      = Math.round((r.similarity || 0) * 100);
+          const barColor = pct >= 80 ? 'bg-brand' : pct >= 50 ? 'bg-yellow-400' : 'bg-red-400';
+          return `
+          <div class="bg-[#16161f] border border-border rounded-lg p-4 mb-2">
+            <div class="flex justify-between items-center mb-2">
+              <div class="flex items-center gap-2">
+                <span class="text-[11px] font-display font-bold text-slate-500">#${idx + 1}</span>
+                <span class="text-indigo-400 text-xs font-mono">${escHtml(r.id)}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="w-24 bg-border rounded-full h-1.5 overflow-hidden">
+                  <div class="${barColor} h-full rounded-full" style="width:${pct}%"></div>
+                </div>
+                <span class="text-xs font-display font-bold ${pct >= 80 ? 'text-brand' : pct >= 50 ? 'text-yellow-400' : 'text-red-400'}">${pct}%</span>
+              </div>
+            </div>
+            <p class="text-slate-200 text-sm leading-relaxed mb-1.5">${escHtml(r.text)}</p>
+            <p class="text-slate-500 text-xs italic">${r.metadata && Object.keys(r.metadata).length ? escHtml(JSON.stringify(r.metadata)) : 'no metadata'}</p>
+          </div>`;
+        }).join('')
+      : '<p class="text-slate-500 text-sm text-center py-8">No results found.</p>';
+  } catch(e) { container.innerHTML = `<p class="text-red-400 text-sm py-2">Error: ${escHtml(e.message)}</p>`; }
+}
+
+// ── Documents ──────────────────────────────────────────────
+async function loadDocs() {
+  const collection = document.getElementById('docs-collection').value;
+  const limit      = document.getElementById('docs-limit').value;
+  const container  = document.getElementById('docs-list');
+  if (!collection) return;
+  container.innerHTML = '<p class="text-slate-500 text-sm py-2">Loading…</p>';
+  try {
+    const data = await adminApi(`/api/documents/browse?collection=${collection}&limit=${limit}`);
+    container.innerHTML = data.documents.length
+      ? `<p class="text-slate-500 text-xs mb-3">Showing ${data.documents.length} of ${data.total.toLocaleString()}</p>`
+        + data.documents.map(d=>`
+          <div id="doc-${escAttr(d.id)}" class="bg-[#16161f] border border-border rounded-lg p-3.5 mb-2 flex gap-3 items-start">
+            <div class="flex-1 overflow-hidden">
+              <p class="text-indigo-400 text-xs mb-1">${escHtml(d.id)}</p>
+              <p class="text-slate-200 text-sm truncate">${escHtml(d.text)}</p>
+              <p class="text-slate-500 text-xs mt-1 italic">${d.metadata && Object.keys(d.metadata).length ? escHtml(JSON.stringify(d.metadata)) : 'no metadata'}</p>
+            </div>
+            <button onclick="deleteDoc('${escAttr(d.id)}','${escAttr(collection)}')"
+              class="shrink-0 px-3 py-1.5 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-lg hover:bg-red-500/20 transition-colors font-display font-bold">
+              Delete
+            </button>
+          </div>`).join('')
+      : '<p class="text-slate-500 text-sm text-center py-8">No documents in this collection.</p>';
+  } catch(e) { container.innerHTML = `<p class="text-red-400 text-sm py-2">Error: ${escHtml(e.message)}</p>`; }
+}
+
+async function deleteDoc(id, collection) {
+  if (!confirm(`Delete "${id}"?`)) return;
+  try {
+    await publicApi('/documents/delete', { method:'DELETE', body: JSON.stringify({ids:[id], collection}) });
+    document.getElementById('doc-'+id)?.remove();
+    toast(`Deleted "${id}"`);
+    loadStats();
+  } catch(e) { toast(`Failed: ${e.message}`, 'error'); }
+}
+
+async function insertDocument() {
+  const id         = document.getElementById('insert-id').value.trim();
+  const text       = document.getElementById('insert-text').value.trim();
+  const collection = document.getElementById('insert-doc-collection').value;
+  const metaRaw    = document.getElementById('insert-meta').value.trim();
+  const status     = document.getElementById('insert-status');
+  if (!id || !text) { toast('ID and Text are required', 'error'); return; }
+  let metadata = {};
+  if (metaRaw) {
+    try { metadata = JSON.parse(metaRaw); }
+    catch(e) { toast('Invalid JSON in metadata', 'error'); return; }
+  }
+  try {
+    const data = await publicApi('/documents/upsert', { method:'POST', body: JSON.stringify({id, text, collection, metadata}) });
+    status.textContent = `✓ ${data.message}`;
+    status.className   = 'text-sm text-brand';
+    document.getElementById('insert-id').value   = '';
+    document.getElementById('insert-text').value = '';
+    document.getElementById('insert-meta').value = '';
+    loadStats();
+  } catch(e) {
+    status.textContent = `✗ ${e.message}`;
+    status.className   = 'text-sm text-red-400';
+  }
+}
+
+// ── CSV Import ─────────────────────────────────────────────
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('border-brand');
+  if (e.dataTransfer.files[0]) processFile(e.dataTransfer.files[0]);
+}
+function handleFileSelect(input) { if (input.files[0]) processFile(input.files[0]); }
+
+async function processFile(file) {
+  csvFile = file;
+  const form = new FormData();
+  form.append('file', file);
+  try {
+    const res  = await fetch('/admin/api/csv/preview', { method:'POST', body: form });
+    const data = await res.json();
+    csvColumns     = data.columns;
+    csvPreviewData = data.preview;
+    showCsvStep2();
+  } catch(e) { toast(`Failed to read CSV: ${e.message}`, 'error'); }
+}
+
+function showCsvStep2() {
+  document.getElementById('import-step2').classList.remove('hidden');
+  if (csvPreviewData.length) {
+    const headers = csvColumns.map(c=>`<th class="px-2 py-1 text-left text-brand whitespace-nowrap">${escHtml(c)}</th>`).join('');
+    const rows    = csvPreviewData.map(r=>`<tr class="border-t border-border/40">${csvColumns.map(c=>`<td class="px-2 py-1 text-slate-400 max-w-[200px] truncate" title="${escHtml(String(r[c]||''))}">${escHtml(String(r[c]||''))}</td>`).join('')}</tr>`).join('');
+    document.getElementById('csv-preview').innerHTML = `<table class="w-full border border-border rounded overflow-hidden"><thead class="bg-border/40"><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>`;
+  }
+  document.getElementById('import-id-field').innerHTML = csvColumns.map(c=>`<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('');
+  document.getElementById('text-field-checkboxes').innerHTML = csvColumns.map(c=>`
+    <label class="checkbox-label">
+      <input type="checkbox" value="${escHtml(c)}" class="sr-only" onchange="updateTextPreview()">
+      <span>${escHtml(c)}</span>
+    </label>`).join('');
+  updateTextPreview();
+}
+
+function resumeImport(fromRow) {
+  // Navigate to import page and pre-fill the start_from field
+  showPage('import');
+  setTimeout(() => {
+    const input = document.getElementById('import-start-from');
+    if (input) {
+      input.value = fromRow;
+      input.style.borderColor = '#fbbf24';  // highlight in yellow
+      toast(`Start from row set to ${fromRow} — re-upload your CSV to resume`);
+    }
+  }, 100);
+}
+
+async function loadJobs() {
+  const container = document.getElementById('jobs-list');
+  try {
+    const data = await adminApi('/api/jobs');
+    const statusColor = { pending:'text-slate-500', running:'text-yellow-400', done:'text-brand', failed:'text-red-400' };
+    const statusIcon  = { pending:'○', running:'◌', done:'✓', failed:'✗' };
+    container.innerHTML = data.jobs.length
+      ? data.jobs.map(j => `
+          <div class="flex items-start justify-between py-3 border-b border-border/50 last:border-0">
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="font-medium ${statusColor[j.status]||'text-slate-400'}">${statusIcon[j.status]||'?'} ${escHtml(j.name)}</span>
+                <span class="text-xs text-slate-600 font-mono">#${j.id}</span>
+              </div>
+              ${j.status === 'running' ? `
+                <div class="flex items-center gap-2 mb-1">
+                  <div class="flex-1 bg-border rounded-full h-1.5 overflow-hidden max-w-xs">
+                    <div class="h-full rounded-full bg-yellow-400 transition-all" style="width:${j.progress}%"></div>
+                  </div>
+                  <span class="text-xs text-slate-500">${j.progress}%</span>
+                </div>` : ''}
+              <p class="text-xs text-slate-500">
+                ${j.imported ? `Imported: ${j.imported}` : ''}
+                ${j.skipped  ? ` &nbsp; Skipped: ${j.skipped}` : ''}
+                ${j.total    ? ` &nbsp; Total rows: ${j.total}` : ''}
+                ${j.error    ? `<span class="text-red-400 ml-1">${escHtml(j.error)}</span>` : ''}
+              ${j.status === 'failed' && j.imported > 0 ? `
+                <button onclick="resumeImport(${j.imported})"
+                  class="mt-1 px-3 py-1 bg-yellow-400/10 border border-yellow-400/30 text-yellow-400 text-xs rounded-lg hover:bg-yellow-400/20 transition-colors font-display font-bold">
+                  ↩ Resume from row ${j.imported}
+                </button>` : ''}
+              </p>
+              <p class="text-xs text-slate-600 mt-0.5">${j.created_at.slice(0,19).replace('T',' ')}${j.finished_at ? ' → ' + j.finished_at.slice(0,19).replace('T',' ') : ''}</p>
+            </div>
+          </div>`).join('')
+      : '<p class="text-slate-500 text-sm text-center py-8">No jobs yet.</p>';
+  } catch(e) { container.innerHTML = `<p class="text-red-400 text-sm py-2">Error: ${escHtml(e.message)}</p>`; }
+}
+
+function setSep(sep) {
+  document.getElementById('import-separator').value = sep;
+  // Update active preset button
+  document.querySelectorAll('.sep-btn').forEach(b => b.classList.remove('active', 'border-brand', 'text-brand'));
+  event.target.classList.add('active', 'border-brand', 'text-brand');
+  updateTextPreview();
+}
+
+function updateTextPreview() {
+  const sep      = document.getElementById('import-separator')?.value ?? ' ';
+  const checked  = [...document.querySelectorAll('#text-field-checkboxes input:checked')].map(i => i.value);
+  const preview  = document.getElementById('text-preview');
+  if (!preview) return;
+  if (!checked.length || !csvPreviewData.length) {
+    preview.textContent = 'Select text fields to see preview…';
+    preview.className   = preview.className.replace('text-brand', 'text-slate-500');
+    return;
+  }
+  const row    = csvPreviewData[0];
+  const result = checked.map(f => (row[f] || '').trim()).filter(Boolean).join(sep);
+  preview.textContent = result || '(empty — check field values in preview)';
+  preview.className   = preview.className.replace('text-slate-500', 'text-brand');
+}
+
+async function startImport() {
+  const collection = document.getElementById('import-collection').value;
+  const id_field   = document.getElementById('import-id-field').value;
+  const batch_size = document.getElementById('import-batch-size').value;
+  const checked    = [...document.querySelectorAll('#text-field-checkboxes input:checked')].map(i=>i.value);
+  if (!checked.length) { toast('Select at least one text field', 'error'); return; }
+  document.getElementById('import-step3').classList.remove('hidden');
+  document.getElementById('import-step2').classList.add('hidden');
+  const form = new FormData();
+  const separator  = document.getElementById('import-separator').value;
+  const start_from = parseInt(document.getElementById('import-start-from')?.value || '0');
+  form.append('file', csvFile);
+  form.append('collection', collection);
+  form.append('id_field', id_field);
+  form.append('text_fields', checked.join(','));
+  form.append('text_separator', separator);
+  form.append('batch_size', batch_size);
+  form.append('start_from', start_from);
+  // Submit to background job — returns immediately with job_id
+  const res  = await fetch('/admin/api/csv/import', { method:'POST', body: form });
+  const data = await res.json();
+  if (!res.ok) { toast(`Import failed: ${data.detail}`, 'error'); return; }
+
+  // Poll job status every second
+  const jobId = data.job_id;
+  document.getElementById('import-progress-label').textContent = 'Job queued — starting…';
+
+  const poll = setInterval(async () => {
+    try {
+      const job = await adminApi(`/api/jobs/${jobId}`);
+      document.getElementById('import-progress-bar').style.width = job.progress + '%';
+      document.getElementById('import-progress-pct').textContent = job.progress + '%';
+
+      if (job.status === 'running') {
+        document.getElementById('import-progress-label').textContent = `Imported ${job.imported} of ${job.total} rows…`;
+      } else if (job.status === 'done') {
+        clearInterval(poll);
+        document.getElementById('import-progress-label').textContent = 'Complete!';
+        document.getElementById('import-result').innerHTML = `
+          <p class="text-brand">✓ Import complete</p>
+          <p class="text-slate-500 mt-1">Imported: <span class="text-slate-200">${job.imported}</span> &nbsp; Skipped: <span class="text-slate-200">${job.skipped}</span> &nbsp; Total: <span class="text-slate-200">${job.total}</span></p>
+          <button onclick="resetImport()" class="btn-primary mt-4 text-sm">Import Another</button>`;
+        loadStats();
+      } else if (job.status === 'failed') {
+        clearInterval(poll);
+        document.getElementById('import-progress-label').textContent = 'Failed';
+        document.getElementById('import-result').innerHTML = `
+          <p class="text-red-400">✗ Import failed</p>
+          <p class="text-slate-500 mt-1 font-mono text-xs">${escHtml(job.error)}</p>
+          <button onclick="resetImport()" class="btn-primary mt-4 text-sm">Try Again</button>`;
+      }
+    } catch(e) { clearInterval(poll); }
+  }, 1000);
+
+  toast('Import started in background — you can navigate away');
+}
+
+function resetImport() {
+  csvFile = null; csvColumns = []; csvPreviewData = [];
+  ['import-step2','import-step3'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  document.getElementById('import-progress-bar').style.width = '0%';
+  document.getElementById('import-result').innerHTML = '';
+  document.getElementById('csv-file').value = '';
+  document.getElementById('import-separator').value = ' ';
+  if (document.getElementById('import-start-from')) document.getElementById('import-start-from').value = '0';
+  document.getElementById('text-preview').textContent = 'Select text fields to see preview…';
+}
+
+// ── SSE Logs ──────────────────────────────────────────────
+const LEVEL_COLORS = { DEBUG:'text-slate-500', INFO:'text-brand', WARNING:'text-yellow-400', ERROR:'text-red-400', CRITICAL:'text-red-400 font-bold' };
+
+function connectSSE() {
+  if (sseSource) return;
+  sseSource = new EventSource('/admin/api/logs/stream');
+  sseSource.onopen = () => {
+    document.getElementById('sse-dot').className = 'inline-block w-2 h-2 rounded-full bg-brand animate-pulse-dot';
+    document.getElementById('sse-label').textContent = 'Live';
+  };
+  sseSource.onmessage = (ev) => {
+    const line = JSON.parse(ev.data);
+    allLogs.push(line);
+    if (logFilter === 'ALL' || line.level === logFilter) appendLogLine(line);
+  };
+  sseSource.onerror = () => {
+    document.getElementById('sse-dot').className = 'inline-block w-2 h-2 rounded-full bg-slate-600';
+    document.getElementById('sse-label').textContent = 'Reconnecting…';
+  };
+}
+function disconnectSSE() { if (sseSource) { sseSource.close(); sseSource = null; } }
+
+function appendLogLine(line) {
+  const wrap = document.getElementById('log-wrap');
+  const el   = document.createElement('div');
+  el.className = 'flex gap-3 py-0.5 border-b border-border/40';
+  el.innerHTML = `
+    <span class="text-slate-600 shrink-0 whitespace-nowrap">${escHtml(line.ts)}</span>
+    <span class="w-16 shrink-0 font-medium ${LEVEL_COLORS[line.level]||'text-slate-400'}">${escHtml(line.level)}</span>
+    <span class="text-indigo-400 shrink-0 max-w-[140px] truncate">${escHtml(line.logger.split('.').pop())}</span>
+    <span class="text-slate-200 flex-1 break-words">${escHtml(line.msg)}</span>`;
+  wrap.appendChild(el);
+  if (autoScroll) wrap.scrollTop = wrap.scrollHeight;
+}
+
+function setFilter(level, btn) {
+  logFilter = level;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const wrap = document.getElementById('log-wrap');
+  wrap.innerHTML = '';
+  (level === 'ALL' ? allLogs : allLogs.filter(l=>l.level===level)).forEach(appendLogLine);
+}
+function clearLogs() { allLogs = []; document.getElementById('log-wrap').innerHTML = ''; }
+document.getElementById('log-wrap').addEventListener('scroll', function() {
+  autoScroll = this.scrollTop + this.clientHeight >= this.scrollHeight - 20;
+});
+
+// ── Users ─────────────────────────────────────────────────
+async function loadUsers() {
+  const container = document.getElementById('users-list');
+  try {
+    const data = await adminApi('/api/users');
+    const roleColor = { admin:'bg-brand/10 text-brand', readwrite:'bg-indigo-500/10 text-indigo-400', readonly:'bg-slate-500/10 text-slate-400' };
+    container.innerHTML = data.users.length
+      ? data.users.map(u => `
+          <div class="flex items-center justify-between py-3 border-b border-border/50 last:border-0">
+            <div>
+              <p class="text-sm text-slate-200">${escHtml(u.username)}</p>
+              <p class="text-xs text-slate-500">${u.created_at.slice(0,10)}</p>
+            </div>
+            <div class="flex items-center gap-3">
+              ${u.role === 'admin'
+                ? `<span class="px-2 py-0.5 rounded text-xs bg-brand/10 text-brand">admin</span>
+                   <span class="text-xs text-slate-600 italic">protected</span>`
+                : `<select onchange="updateUserRole('${escAttr(u.id)}', this.value)"
+                    class="bg-[#0a0a0f] border border-border rounded px-2 py-1 text-xs font-mono text-slate-300 outline-none focus:border-brand transition-colors">
+                    <option value="readwrite" ${u.role==='readwrite'?'selected':''}>readwrite</option>
+                    <option value="readonly"  ${u.role==='readonly' ?'selected':''}>readonly</option>
+                  </select>
+                  <button onclick="removeUser('${escAttr(u.id)}','${escAttr(u.username)}')"
+                    class="px-3 py-1.5 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-lg hover:bg-red-500/20 transition-colors font-display font-bold">
+                    Remove
+                  </button>`
+              }
+            </div>
+          </div>`).join('')
+      : '<p class="text-slate-500 text-sm text-center py-8">No users yet.</p>';
+  } catch(e) { container.innerHTML = `<p class="text-red-400 text-sm py-2">Error: ${escHtml(e.message)}</p>`; }
+}
+
+async function addUser() {
+  const username = document.getElementById('new-username').value.trim();
+  const password = document.getElementById('new-user-password').value.trim();
+  const role     = document.getElementById('new-user-role').value;
+  if (!username || !password) { toast('Username and password required', 'error'); return; }
+  try {
+    await adminApi('/api/users', { method:'POST', body: JSON.stringify({username, password, role}) });
+    document.getElementById('new-username').value = '';
+    document.getElementById('new-user-password').value = '';
+    toast(`User '${username}' created`);
+    loadUsers();
+  } catch(e) { toast(`Failed: ${e.message}`, 'error'); }
+}
+
+async function updateUserRole(id, role) {
+  try {
+    await adminApi(`/api/users/${id}`, { method:'PATCH', body: JSON.stringify({role}) });
+    toast(`Role updated to '${role}'`);
+  } catch(e) { toast(`Failed: ${e.message}`, 'error'); loadUsers(); }
+}
+
+async function removeUser(id, username) {
+  if (!confirm(`Remove user "${username}"?`)) return;
+  try {
+    await adminApi(`/api/users/${id}`, { method:'DELETE' });
+    toast(`User '${username}' removed`);
+    loadUsers();
+  } catch(e) { toast(`Failed: ${e.message}`, 'error'); }
+}
+
+// ── API Keys ───────────────────────────────────────────────
+async function loadKeys() {
+  const container = document.getElementById('keys-list');
+  try {
+    const data = await adminApi('/api/keys');
+    container.innerHTML = data.keys.length
+      ? data.keys.map(k => `
+          <div class="flex items-center justify-between py-3 border-b border-border/50 last:border-0">
+            <div>
+              <p class="text-sm text-slate-200">${escHtml(k.name)}</p>
+              <p class="text-xs text-slate-500 font-mono">${escHtml(k.preview)} &nbsp;·&nbsp; by ${escHtml(k.created_by)} &nbsp;·&nbsp; ${k.created_at.slice(0,10)}</p>
+            </div>
+            <button onclick="revokeKey('${escAttr(k.id)}','${escAttr(k.name)}')"
+              class="px-3 py-1.5 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-lg hover:bg-red-500/20 transition-colors font-display font-bold">
+              Revoke
+            </button>
+          </div>`).join('')
+      : '<p class="text-slate-500 text-sm text-center py-8">No API keys yet.</p>';
+  } catch(e) { container.innerHTML = `<p class="text-red-400 text-sm py-2">Error: ${escHtml(e.message)}</p>`; }
+}
+
+async function createKey() {
+  const name = document.getElementById('new-key-name').value.trim();
+  if (!name) { toast('Key name required', 'error'); return; }
+  try {
+    const data = await adminApi('/api/keys', { method:'POST', body: JSON.stringify({name}) });
+    document.getElementById('new-key-name').value = '';
+    // Show banner with the raw key — only shown once
+    document.getElementById('new-key-value').textContent = data.key;
+    document.getElementById('new-key-banner').classList.remove('hidden');
+    loadKeys();
+  } catch(e) { toast(`Failed: ${e.message}`, 'error'); }
+}
+
+function copyKey() {
+  const key = document.getElementById('new-key-value').textContent;
+  navigator.clipboard.writeText(key).then(() => toast('Key copied to clipboard'));
+}
+
+async function revokeKey(id, name) {
+  if (!confirm(`Revoke key "${name}"? This cannot be undone.`)) return;
+  try {
+    await adminApi(`/api/keys/${id}`, { method:'DELETE' });
+    toast(`Key '${name}' revoked`);
+    loadKeys();
+  } catch(e) { toast(`Failed: ${e.message}`, 'error'); }
+}
+
+// ── Load page data when navigating ────────────────────────
+const _origShowPage = showPage;
+showPage = function(name) {
+  _origShowPage(name);
+  if (name === 'users') loadUsers();
+  if (name === 'keys')  loadKeys();
+  if (name === 'jobs')  loadJobs();
+};
+
+// ── Init ───────────────────────────────────────────────────
+loadStats();
+setInterval(loadStats, 10000);
+</script>
+{% endblock %}

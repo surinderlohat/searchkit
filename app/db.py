@@ -117,11 +117,16 @@ async def safe_upsert(
     Concurrent upsert calls will queue up and execute one at a time.
     """
     logger.debug(f"Upserting {len(ids)} documents into '{collection.name}'")
+    # ChromaDB rejects empty dicts in metadatas list — sanitise before upsert
+    safe_metas: list[dict] | None = None
+    if metadatas is not None:
+        sanitised = [m if (m and isinstance(m, dict)) else None for m in metadatas]
+        safe_metas = sanitised if any(m is not None for m in sanitised) else None
     async with _WRITE_LOCK:
         collection.upsert(
             ids=ids,
             documents=documents,
-            metadatas=metadatas,
+            metadatas=safe_metas,
         )
     logger.debug(f"Upsert complete for {len(ids)} documents.")
 

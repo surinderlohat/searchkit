@@ -2,11 +2,10 @@
 # Licensed under the MIT License. See LICENSE file in the project root.
 from __future__ import annotations
 
-import asyncio
+import enum
 import secrets
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from enum import Enum
+from datetime import UTC, datetime
 from typing import Any
 
 from app.logger import get_logger
@@ -14,37 +13,37 @@ from app.logger import get_logger
 logger = get_logger(__name__)
 
 
-class JobStatus(str, Enum):
-    PENDING   = "pending"
-    RUNNING   = "running"
-    DONE      = "done"
-    FAILED    = "failed"
+class JobStatus(enum.StrEnum):
+    PENDING = "pending"
+    RUNNING = "running"
+    DONE = "done"
+    FAILED = "failed"
 
 
 @dataclass
 class Job:
-    id:         str
-    name:       str
-    status:     JobStatus = JobStatus.PENDING
-    progress:   int       = 0          # 0-100
-    imported:   int       = 0
-    skipped:    int       = 0
-    total:      int       = 0
-    error:      str       = ""
-    created_at: str       = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    finished_at:str       = ""
+    id: str
+    name: str
+    status: JobStatus = JobStatus.PENDING
+    progress: int = 0  # 0-100
+    imported: int = 0
+    skipped: int = 0
+    total: int = 0
+    error: str = ""
+    created_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
+    finished_at: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "id":          self.id,
-            "name":        self.name,
-            "status":      self.status,
-            "progress":    self.progress,
-            "imported":    self.imported,
-            "skipped":     self.skipped,
-            "total":       self.total,
-            "error":       self.error,
-            "created_at":  self.created_at,
+            "id": self.id,
+            "name": self.name,
+            "status": self.status,
+            "progress": self.progress,
+            "imported": self.imported,
+            "skipped": self.skipped,
+            "total": self.total,
+            "error": self.error,
+            "created_at": self.created_at,
             "finished_at": self.finished_at,
         }
 

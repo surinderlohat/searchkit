@@ -4,7 +4,12 @@ from fastapi import APIRouter, HTTPException
 
 from app.db import delete_collection, get_collection, list_collections
 from app.logger import get_logger
-from app.schemas import CollectionCreateRequest, CollectionInfo, CollectionListResponse, StatusResponse
+from app.schemas import (
+    CollectionCreateRequest,
+    CollectionInfo,
+    CollectionListResponse,
+    StatusResponse,
+)
 
 logger = get_logger(__name__)
 router = APIRouter()

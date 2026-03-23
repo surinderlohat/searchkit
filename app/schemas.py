@@ -6,7 +6,6 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-
 # ── Documents ──────────────────────────────────────────────
 
 
@@ -84,7 +83,7 @@ class DocumentResult(BaseModel):
         document: str,
         metadata: dict | None,
         distance: float,
-    ) -> "DocumentResult":
+    ) -> DocumentResult:
         """Factory method — maps ChromaDB's 'document' field to our 'text' field."""
         return cls(id=id, text=document, metadata=metadata or {}, distance=distance)
 

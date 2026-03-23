@@ -7,6 +7,7 @@ import csv
 import io
 import json
 import os
+from datetime import UTC
 
 from fastapi import APIRouter, BackgroundTasks, Cookie, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse, StreamingResponse
@@ -19,7 +20,6 @@ from app.log_buffer import get_logs
 from app.logger import get_logger
 from app.memory import MEMORY_LIMIT_MB, MEMORY_WARN_MB, get_memory_mb
 from app.store import (
-    ApiKey,
     User,
     create_api_key,
     create_user,
@@ -314,7 +314,7 @@ async def _run_csv_import(
     batch_size: int,
     start_from: int = 0,
 ) -> None:
-    from datetime import datetime, timezone
+    from datetime import datetime
     job = get_job(job_id)
     if not job:
         return
@@ -359,13 +359,13 @@ async def _run_csv_import(
 
         job.status      = JobStatus.DONE
         job.progress    = 100
-        job.finished_at = datetime.now(timezone.utc).isoformat()
+        job.finished_at = datetime.now(UTC).isoformat()
         logger.info(f"Job {job_id} done — {job.imported} imported, {job.skipped} skipped")
 
     except Exception as e:
         job.status      = JobStatus.FAILED
         job.error       = str(e)
-        job.finished_at = datetime.now(timezone.utc).isoformat()
+        job.finished_at = datetime.now(UTC).isoformat()
         logger.error(f"Job {job_id} failed: {e}", exc_info=True)
 
 

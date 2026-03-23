@@ -6,13 +6,13 @@ import os
 import time
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import Cookie, Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import RedirectResponse
 
-from app.auth import check_api_key, verify_api_key
+from app.auth import check_api_key
 from app.db import get_collection
 from app.log_buffer import attach_buffer_handler
 from app.logger import get_logger
@@ -128,7 +128,7 @@ async def openapi_schema():
 # This allows the admin dashboard to call public endpoints using
 # the session cookie without needing an API key.
 
-from fastapi import Cookie
+
 
 async def session_or_api_key(
     request: Request,

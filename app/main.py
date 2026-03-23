@@ -27,8 +27,8 @@ _API_KEY_SET = bool(os.getenv("API_KEY", ""))
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     attach_buffer_handler()  # capture logs into in-memory buffer for admin dashboard
-    init_db()                 # create SQLite tables if not exist
-    bootstrap_admin()         # create first admin user from env vars if no users exist
+    init_db()  # create SQLite tables if not exist
+    bootstrap_admin()  # create first admin user from env vars if no users exist
     logger.info("Initializing embedded ChromaDB...")
     get_collection()
     logger.info("ChromaDB ready (embedded mode).")
@@ -60,9 +60,10 @@ app.add_middleware(
 
 # ── Request logging middleware ─────────────────────────────
 
+
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    start   = time.perf_counter()
+    start = time.perf_counter()
     response = await call_next(request)
     duration = (time.perf_counter() - start) * 1000
 
@@ -70,15 +71,14 @@ async def log_requests(request: Request, call_next):
     skip = {"/", "/docs", "/openapi.json", "/health"}
     if request.url.path not in skip and not request.url.path.startswith("/admin/api/logs"):
         logger.info(
-            f"{request.method} {request.url.path} "
-            f"→ {response.status_code} "
-            f"[{duration:.1f}ms]"
+            f"{request.method} {request.url.path} → {response.status_code} [{duration:.1f}ms]"
         )
 
     return response
 
 
 # ── Public endpoints ───────────────────────────────────────
+
 
 @app.get("/", include_in_schema=False)
 async def root():
@@ -129,7 +129,6 @@ async def openapi_schema():
 # the session cookie without needing an API key.
 
 
-
 async def session_or_api_key(
     request: Request,
     sk_session: str | None = Cookie(default=None),
@@ -144,10 +143,13 @@ async def session_or_api_key(
     api_key = request.headers.get("X-API-Key", "")
     return check_api_key(api_key)
 
+
 _auth = Depends(session_or_api_key)
 
 app.include_router(health.router, tags=["Health"], dependencies=[_auth])
-app.include_router(collections.router, prefix="/collections", tags=["Collections"], dependencies=[_auth])
+app.include_router(
+    collections.router, prefix="/collections", tags=["Collections"], dependencies=[_auth]
+)
 app.include_router(documents.router, prefix="/documents", tags=["Documents"], dependencies=[_auth])
 app.include_router(search.router, prefix="/search", tags=["Search"], dependencies=[_auth])
 app.include_router(admin.router, prefix="/admin", include_in_schema=False)

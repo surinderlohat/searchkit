@@ -39,13 +39,16 @@ router = APIRouter()
 SESSION_TOKEN = "sk_session"
 
 _TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "../templates")
-templates = Jinja2Templates(env=Environment(
-    loader=FileSystemLoader(_TEMPLATES_DIR),
-    autoescape=True,
-))
+templates = Jinja2Templates(
+    env=Environment(
+        loader=FileSystemLoader(_TEMPLATES_DIR),
+        autoescape=True,
+    )
+)
 
 
 # ── Session auth ───────────────────────────────────────────
+
 
 def get_session_user(
     session: str | None = Cookie(default=None, alias=SESSION_TOKEN),
@@ -68,6 +71,7 @@ def require_admin(user: User = Depends(get_session_user)) -> User:
 
 # ── Login / Logout ─────────────────────────────────────────
 
+
 @router.get("/login", include_in_schema=False)
 async def login_page(request: Request):
     return templates.TemplateResponse("admin_login.html", {"request": request})
@@ -75,10 +79,10 @@ async def login_page(request: Request):
 
 @router.post("/login", include_in_schema=False)
 async def login(request: Request):
-    form     = await request.form()
+    form = await request.form()
     username = form.get("username", "").strip()
     password = form.get("password", "")
-    user     = get_user_by_credentials(username, password)
+    user = get_user_by_credentials(username, password)
     if user:
         response = RedirectResponse(url="/admin", status_code=302)
         response.set_cookie(SESSION_TOKEN, user.id, httponly=True, samesite="strict")
@@ -101,32 +105,35 @@ async def logout():
 
 # ── Dashboard ──────────────────────────────────────────────
 
+
 @router.get("", include_in_schema=False)
 async def dashboard(request: Request, user: User = Depends(get_session_user)):
-    return templates.TemplateResponse("admin_dashboard.html", {
-        "request": request,
-        "user": user,
-    })
+    return templates.TemplateResponse(
+        "admin_dashboard.html",
+        {
+            "request": request,
+            "user": user,
+        },
+    )
 
 
 # ── Stats ──────────────────────────────────────────────────
 
+
 @router.get("/api/stats", include_in_schema=False)
 async def stats(user: User = Depends(get_session_user)):
     names = list_collections()
-    collections = [
-        {"name": name, "count": get_collection(name).count()}
-        for name in names
-    ]
+    collections = [{"name": name, "count": get_collection(name).count()} for name in names]
     return {
-        "collections":     collections,
-        "memory_mb":       round(get_memory_mb(), 1),
-        "memory_warn_mb":  MEMORY_WARN_MB,
+        "collections": collections,
+        "memory_mb": round(get_memory_mb(), 1),
+        "memory_warn_mb": MEMORY_WARN_MB,
         "memory_limit_mb": MEMORY_LIMIT_MB,
     }
 
 
 # ── Document browse ────────────────────────────────────────
+
 
 @router.get("/api/documents/browse", include_in_schema=False)
 async def browse_documents(
@@ -134,13 +141,13 @@ async def browse_documents(
     limit: int = 50,
     user: User = Depends(get_session_user),
 ):
-    col     = get_collection(collection)
+    col = get_collection(collection)
     results = col.get(limit=limit, include=["documents", "metadatas"])
     return {
         "documents": [
             {
-                "id":       results["ids"][i],
-                "text":     results["documents"][i],
+                "id": results["ids"][i],
+                "text": results["documents"][i],
                 "metadata": results["metadatas"][i] or {} if results["metadatas"] else {},
             }
             for i in range(len(results["ids"]))
@@ -151,25 +158,31 @@ async def browse_documents(
 
 # ── Users ──────────────────────────────────────────────────
 
+
 @router.get("/api/users", include_in_schema=False)
 async def get_users(user: User = Depends(require_admin)):
-    return {"users": [
-        {"id": u.id, "username": u.username, "role": u.role, "created_at": u.created_at}
-        for u in list_users()
-    ]}
+    return {
+        "users": [
+            {"id": u.id, "username": u.username, "role": u.role, "created_at": u.created_at}
+            for u in list_users()
+        ]
+    }
 
 
 @router.post("/api/users", include_in_schema=False)
 async def add_user(request: Request, user: User = Depends(require_admin)):
-    body     = await request.json()
+    body = await request.json()
     username = body.get("username", "").strip()
     password = body.get("password", "").strip()
-    role     = body.get("role", "readonly")
+    role = body.get("role", "readonly")
 
     if not username or not password:
         raise HTTPException(status_code=422, detail="Username and password are required")
     if role not in ("readwrite", "readonly"):
-        raise HTTPException(status_code=422, detail="Role must be 'readwrite' or 'readonly'. Admin role cannot be assigned.")
+        raise HTTPException(
+            status_code=422,
+            detail="Role must be 'readwrite' or 'readonly'. Admin role cannot be assigned.",
+        )
     if user_exists(username):
         raise HTTPException(status_code=409, detail=f"User '{username}' already exists")
 
@@ -212,12 +225,21 @@ async def remove_user(user_id: str, user: User = Depends(require_admin)):
 
 # ── API Keys ───────────────────────────────────────────────
 
+
 @router.get("/api/keys", include_in_schema=False)
 async def get_keys(user: User = Depends(require_admin)):
-    return {"keys": [
-        {"id": k.id, "name": k.name, "preview": k.key_preview, "created_by": k.created_by, "created_at": k.created_at}
-        for k in list_api_keys()
-    ]}
+    return {
+        "keys": [
+            {
+                "id": k.id,
+                "name": k.name,
+                "preview": k.key_preview,
+                "created_by": k.created_by,
+                "created_at": k.created_at,
+            }
+            for k in list_api_keys()
+        ]
+    }
 
 
 @router.post("/api/keys", include_in_schema=False)
@@ -230,9 +252,9 @@ async def add_key(request: Request, user: User = Depends(require_admin)):
     logger.info(f"Admin '{user.username}' created API key '{name}'")
     # raw_key shown ONCE — client must copy it now
     return {
-        "id":      api_key.id,
-        "name":    api_key.name,
-        "key":     raw_key,   # only time full key is returned
+        "id": api_key.id,
+        "name": api_key.name,
+        "key": raw_key,  # only time full key is returned
         "preview": api_key.key_preview,
     }
 
@@ -247,18 +269,19 @@ async def remove_key(key_id: str, user: User = Depends(require_admin)):
 
 # ── CSV Import ─────────────────────────────────────────────
 
+
 @router.post("/api/csv/preview", include_in_schema=False)
 async def csv_preview(request: Request, user: User = Depends(get_session_user)):
-    form    = await request.form()
-    file    = form.get("file")
+    form = await request.form()
+    file = form.get("file")
     content = await file.read()
     try:
         text = content.decode("utf-8-sig")
     except UnicodeDecodeError:
         text = content.decode("latin-1")
-    reader  = csv.DictReader(io.StringIO(text))
+    reader = csv.DictReader(io.StringIO(text))
     columns = reader.fieldnames or []
-    rows    = [dict(row) for i, row in enumerate(reader) if i < 5]
+    rows = [dict(row) for i, row in enumerate(reader) if i < 5]
     return {"columns": list(columns), "preview": rows}
 
 
@@ -268,14 +291,14 @@ async def csv_import(
     background_tasks: BackgroundTasks,
     user: User = Depends(get_session_user),
 ):
-    form        = await request.form()
-    file        = form.get("file")
-    collection  = form.get("collection", "default")
-    id_field    = form.get("id_field", "")
+    form = await request.form()
+    file = form.get("file")
+    collection = form.get("collection", "default")
+    id_field = form.get("id_field", "")
     text_fields = [f.strip() for f in form.get("text_fields", "").split(",") if f.strip()]
-    text_sep    = form.get("text_separator", " ")
-    batch_size  = int(form.get("batch_size", "200"))
-    start_from  = int(form.get("start_from", "0"))   # resume offset — skip first N rows
+    text_sep = form.get("text_separator", " ")
+    batch_size = int(form.get("batch_size", "200"))
+    start_from = int(form.get("start_from", "0"))  # resume offset — skip first N rows
 
     if not id_field:
         raise HTTPException(status_code=422, detail="id_field is required")
@@ -315,31 +338,34 @@ async def _run_csv_import(
     start_from: int = 0,
 ) -> None:
     from datetime import datetime
+
     job = get_job(job_id)
     if not job:
         return
     job.status = JobStatus.RUNNING
     try:
-        all_rows  = list(csv.DictReader(io.StringIO(text_content)))
-        rows      = all_rows[start_from:]   # skip already-imported rows
-        job.total = len(all_rows)           # total reflects full file
-        job.imported = start_from           # count skipped rows as already done
-        col       = get_collection(collection)
+        all_rows = list(csv.DictReader(io.StringIO(text_content)))
+        rows = all_rows[start_from:]  # skip already-imported rows
+        job.total = len(all_rows)  # total reflects full file
+        job.imported = start_from  # count skipped rows as already done
+        col = get_collection(collection)
 
         for i in range(0, len(rows), batch_size):
             batch = rows[i : i + batch_size]
             ids, texts, metas = [], [], []
             for row in batch:
                 doc_id = str(row.get(id_field, "")).strip()
-                text   = text_sep.join(
-                    str(row.get(f, "")).strip()
-                    for f in text_fields if row.get(f, "").strip()
+                text = text_sep.join(
+                    str(row.get(f, "")).strip() for f in text_fields if row.get(f, "").strip()
                 )
                 if not doc_id or not text:
                     job.skipped += 1
                     continue
-                meta = {k: str(v).strip() for k, v in row.items()
-                        if k != id_field and k not in text_fields and str(v).strip()}
+                meta = {
+                    k: str(v).strip()
+                    for k, v in row.items()
+                    if k != id_field and k not in text_fields and str(v).strip()
+                }
                 ids.append(doc_id)
                 texts.append(text)
                 metas.append(meta if meta else None)
@@ -357,14 +383,14 @@ async def _run_csv_import(
             job.progress = round(((start_from + i + len(batch)) / job.total) * 100)
             await asyncio.sleep(0)
 
-        job.status      = JobStatus.DONE
-        job.progress    = 100
+        job.status = JobStatus.DONE
+        job.progress = 100
         job.finished_at = datetime.now(UTC).isoformat()
         logger.info(f"Job {job_id} done — {job.imported} imported, {job.skipped} skipped")
 
     except Exception as e:
-        job.status      = JobStatus.FAILED
-        job.error       = str(e)
+        job.status = JobStatus.FAILED
+        job.error = str(e)
         job.finished_at = datetime.now(UTC).isoformat()
         logger.error(f"Job {job_id} failed: {e}", exc_info=True)
 
@@ -383,6 +409,7 @@ async def get_job_status(job_id: str, user: User = Depends(get_session_user)):
 
 
 # ── Live Logs SSE ──────────────────────────────────────────
+
 
 @router.get("/api/logs/stream", include_in_schema=False)
 async def logs_stream(user: User = Depends(get_session_user)):

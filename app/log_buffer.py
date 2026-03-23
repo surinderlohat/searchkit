@@ -15,12 +15,16 @@ class BufferHandler(logging.Handler):
     """Logging handler that appends records to the in-memory buffer."""
 
     def emit(self, record: logging.LogRecord) -> None:
-        _log_buffer.append({
-            "ts":      self.formatter.formatTime(record, "%Y-%m-%d %H:%M:%S") if self.formatter else "",
-            "level":   record.levelname,
-            "logger":  record.name,
-            "msg":     record.getMessage(),
-        })
+        _log_buffer.append(
+            {
+                "ts": self.formatter.formatTime(record, "%Y-%m-%d %H:%M:%S")
+                if self.formatter
+                else "",
+                "level": record.levelname,
+                "logger": record.name,
+                "msg": record.getMessage(),
+            }
+        )
 
 
 def get_logs() -> list[dict]:

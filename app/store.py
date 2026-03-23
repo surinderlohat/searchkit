@@ -24,7 +24,7 @@ def get_db():
     Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")   # allow concurrent reads
+    conn.execute("PRAGMA journal_mode=WAL")  # allow concurrent reads
     try:
         yield conn
         conn.commit()
@@ -36,6 +36,7 @@ def get_db():
 
 
 # ── Schema ─────────────────────────────────────────────────
+
 
 def init_db() -> None:
     """Create tables if they don't exist. Safe to call on every startup."""
@@ -63,6 +64,7 @@ def init_db() -> None:
 
 # ── Helpers ────────────────────────────────────────────────
 
+
 def _hash(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
 
@@ -76,6 +78,7 @@ def _uid() -> str:
 
 
 # ── Users ──────────────────────────────────────────────────
+
 
 @dataclass
 class User:
@@ -103,7 +106,9 @@ def get_user_by_credentials(username: str, password: str) -> User | None:
             (username.lower().strip(), _hash(password)),
         ).fetchone()
     if row:
-        return User(id=row["id"], username=row["username"], role=row["role"], created_at=row["created_at"])
+        return User(
+            id=row["id"], username=row["username"], role=row["role"], created_at=row["created_at"]
+        )
     return None
 
 
@@ -111,19 +116,26 @@ def get_user_by_id(user_id: str) -> User | None:
     with get_db() as conn:
         row = conn.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
     if row:
-        return User(id=row["id"], username=row["username"], role=row["role"], created_at=row["created_at"])
+        return User(
+            id=row["id"], username=row["username"], role=row["role"], created_at=row["created_at"]
+        )
     return None
 
 
 def list_users() -> list[User]:
     with get_db() as conn:
         rows = conn.execute("SELECT * FROM users ORDER BY created_at").fetchall()
-    return [User(id=r["id"], username=r["username"], role=r["role"], created_at=r["created_at"]) for r in rows]
+    return [
+        User(id=r["id"], username=r["username"], role=r["role"], created_at=r["created_at"])
+        for r in rows
+    ]
 
 
 def update_user_role(user_id: str, role: str) -> bool:
     with get_db() as conn:
-        cur = conn.execute("UPDATE users SET role=? WHERE id=? AND role != 'admin'", (role, user_id))
+        cur = conn.execute(
+            "UPDATE users SET role=? WHERE id=? AND role != 'admin'", (role, user_id)
+        )
     return cur.rowcount > 0
 
 
@@ -135,17 +147,20 @@ def delete_user(user_id: str) -> bool:
 
 def user_exists(username: str) -> bool:
     with get_db() as conn:
-        row = conn.execute("SELECT 1 FROM users WHERE username=?", (username.lower().strip(),)).fetchone()
+        row = conn.execute(
+            "SELECT 1 FROM users WHERE username=?", (username.lower().strip(),)
+        ).fetchone()
     return row is not None
 
 
 # ── API Keys ───────────────────────────────────────────────
 
+
 @dataclass
 class ApiKey:
     id: str
     name: str
-    key_preview: str   # first 8 chars + "..." — never store full key
+    key_preview: str  # first 8 chars + "..." — never store full key
     created_by: str
     created_at: str
 
@@ -154,9 +169,9 @@ def create_api_key(name: str, created_by: str) -> tuple[ApiKey, str]:
     """
     Returns (ApiKey, raw_key). The raw_key is shown ONCE — never retrievable again.
     """
-    raw_key    = "sk-" + secrets.token_hex(24)  # e.g. sk-a1b2c3...
+    raw_key = "sk-" + secrets.token_hex(24)  # e.g. sk-a1b2c3...
     key_preview = raw_key[:10] + "..."
-    uid        = _uid()
+    uid = _uid()
 
     with get_db() as conn:
         conn.execute(
@@ -164,7 +179,9 @@ def create_api_key(name: str, created_by: str) -> tuple[ApiKey, str]:
             (uid, name, _hash(raw_key), key_preview, created_by, _now()),
         )
     logger.info(f"API key '{name}' created by '{created_by}'")
-    return ApiKey(id=uid, name=name, key_preview=key_preview, created_by=created_by, created_at=_now()), raw_key
+    return ApiKey(
+        id=uid, name=name, key_preview=key_preview, created_by=created_by, created_at=_now()
+    ), raw_key
 
 
 def verify_api_key(raw_key: str) -> bool:
@@ -177,7 +194,16 @@ def verify_api_key(raw_key: str) -> bool:
 def list_api_keys() -> list[ApiKey]:
     with get_db() as conn:
         rows = conn.execute("SELECT * FROM api_keys ORDER BY created_at DESC").fetchall()
-    return [ApiKey(id=r["id"], name=r["name"], key_preview=r["key_preview"], created_by=r["created_by"], created_at=r["created_at"]) for r in rows]
+    return [
+        ApiKey(
+            id=r["id"],
+            name=r["name"],
+            key_preview=r["key_preview"],
+            created_by=r["created_by"],
+            created_at=r["created_at"],
+        )
+        for r in rows
+    ]
 
 
 def delete_api_key(key_id: str) -> bool:
@@ -187,6 +213,7 @@ def delete_api_key(key_id: str) -> bool:
 
 
 # ── Bootstrap ──────────────────────────────────────────────
+
 
 def bootstrap_admin() -> None:
     """

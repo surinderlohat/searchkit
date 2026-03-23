@@ -124,11 +124,7 @@ class SearchResponse(BaseModel):
 class CollectionCreateRequest(BaseModel):
     name: str
 
-    model_config = {
-        "json_schema_extra": {
-            "example": {"name": "my-collection"}
-        }
-    }
+    model_config = {"json_schema_extra": {"example": {"name": "my-collection"}}}
 
 
 class CollectionInfo(BaseModel):
